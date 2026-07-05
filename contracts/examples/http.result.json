@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0",
+  "run_id": "3c4d5e6f-7a8b-9c0d-1e2f-3a4b5c6d7e8f",
+  "probe_id": "probe-ct-01",
+  "kind": "http",
+  "target": "https://servico.ufsm.br/health",
+  "observed_at": "2026-07-05T18:15:00Z",
+  "started_at": "2026-07-05T18:15:00Z",
+  "finished_at": "2026-07-05T18:15:00Z",
+  "status": "success",
+  "result": {
+    "url": "https://servico.ufsm.br/health",
+    "http_status": 200,
+    "dns_ms": 4.1,
+    "tcp_connect_ms": 2.31,
+    "tls_handshake_ms": 9.82,
+    "ttfb_ms": 41.2,
+    "total_ms": 52.14,
+    "response_bytes": 185,
+    "status": "success"
+  }
+}

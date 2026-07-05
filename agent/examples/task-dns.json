@@ -1,0 +1,9 @@
+{
+  "task_id": "8b19fa62-d5f2-4a1e-c9fd-030910fe436b",
+  "job_id": "dns-institucional",
+  "type": "dns",
+  "source_probe": "probe-dev-01",
+  "not_before": "2026-07-05T00:00:00Z",
+  "expires_at": "2035-01-01T00:00:00Z",
+  "parameters": { "qname": "www.ufsm.br", "qtype": "A", "tcp": false, "timeout_ms": 2000 }
+}

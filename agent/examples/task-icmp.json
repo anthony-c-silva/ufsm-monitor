@@ -1,0 +1,10 @@
+{
+  "task_id": "6fd91840-b3d0-4fbc-a7fb-e1d79dcd214f",
+  "job_id": "mesh-icmp",
+  "type": "icmp",
+  "source_probe": "probe-dev-01",
+  "target": "1.1.1.1",
+  "not_before": "2026-07-05T00:00:00Z",
+  "expires_at": "2035-01-01T00:00:00Z",
+  "parameters": { "samples": 10, "timeout_ms": 1000 }
+}

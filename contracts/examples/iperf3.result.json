@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0",
+  "run_id": "1c2d3e4f-5a6b-7c8d-9e0f-1a2b3c4d5e6f",
+  "probe_id": "probe-ct-01",
+  "kind": "iperf3",
+  "target": "10.10.20.30",
+  "target_probe": "probe-cpd-01",
+  "observed_at": "2026-07-05T18:05:00Z",
+  "started_at": "2026-07-05T18:05:00Z",
+  "finished_at": "2026-07-05T18:05:10Z",
+  "status": "success",
+  "result": {
+    "protocol": "tcp",
+    "direction": "source_to_target",
+    "duration_seconds": 10,
+    "bytes_transferred": 1052500000,
+    "throughput_bps": 842000000,
+    "retransmits": 8
+  }
+}

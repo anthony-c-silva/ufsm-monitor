@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0",
+  "run_id": "2b3c4d5e-6f7a-8b9c-0d1e-2f3a4b5c6d7e",
+  "probe_id": "probe-husm-01",
+  "kind": "dns",
+  "target": "www.ufsm.br",
+  "observed_at": "2026-07-05T18:10:00Z",
+  "started_at": "2026-07-05T18:10:00Z",
+  "finished_at": "2026-07-05T18:10:00Z",
+  "status": "success",
+  "result": {
+    "resolver": "10.0.0.53",
+    "qname": "www.ufsm.br",
+    "qtype": "A",
+    "transport": "udp",
+    "rcode": "NOERROR",
+    "answer_count": 2,
+    "elapsed_ms": 7,
+    "response_bytes": 96,
+    "answers": ["200.19.100.10", "200.19.100.11"],
+    "status": "success"
+  }
+}

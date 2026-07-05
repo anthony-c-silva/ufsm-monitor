@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0",
+  "run_id": "6fd91840-b3d0-4fbc-a7fb-e1d79dcd214f",
+  "probe_id": "probe-ct-01",
+  "kind": "icmp",
+  "target": "10.10.20.30",
+  "observed_at": "2026-07-05T18:00:00Z",
+  "started_at": "2026-07-05T18:00:00Z",
+  "finished_at": "2026-07-05T18:00:10Z",
+  "status": "success",
+  "result": {
+    "samples_sent": 10,
+    "samples_received": 10,
+    "loss_pct": 0,
+    "rtt_min_ms": 1.21,
+    "rtt_avg_ms": 1.74,
+    "rtt_max_ms": 2.83,
+    "jitter_ms": 0.44,
+    "rtt_p50_ms": 1.7,
+    "rtt_p95_ms": 2.6,
+    "rtt_p99_ms": 2.83
+  }
+}

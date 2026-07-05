@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "run_id": "4d5e6f7a-8b9c-0d1e-2f3a-4b5c6d7e8f90",
+  "probe_id": "probe-ct-01",
+  "kind": "traceroute",
+  "target": "200.19.0.1",
+  "observed_at": "2026-07-05T18:20:00Z",
+  "started_at": "2026-07-05T18:20:00Z",
+  "finished_at": "2026-07-05T18:20:06Z",
+  "status": "success",
+  "result": {
+    "target": "200.19.0.1",
+    "hops": [
+      { "ttl": 1, "address": "10.10.0.1", "rtt_avg_ms": 0.71, "loss_pct": 0 },
+      { "ttl": 2, "address": "10.20.0.1", "rtt_avg_ms": 1.29, "loss_pct": 0 }
+    ]
+  }
+}

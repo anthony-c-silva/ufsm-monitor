@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ufsm-monitor/contracts/task.schema.json",
+  "title": "MeasurementTask",
+  "description": "Tarefa concreta enviada pelo controlador a um probe de origem. Toda tarefa possui expiracao: um probe nunca executa tarefa vencida.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "task_id",
+    "type",
+    "source_probe",
+    "not_before",
+    "expires_at",
+    "parameters"
+  ],
+  "properties": {
+    "task_id":       { "type": "string", "format": "uuid" },
+    "plan_id":       { "type": "string" },
+    "plan_revision": { "type": "integer", "minimum": 0 },
+    "job_id":        { "type": "string" },
+    "type": {
+      "type": "string",
+      "enum": ["icmp", "iperf3", "dns", "http", "traceroute"]
+    },
+    "source_probe":  { "type": "string", "minLength": 1 },
+    "target_probe":  { "type": ["string", "null"] },
+    "target":        { "type": ["string", "null"] },
+    "not_before":    { "type": "string", "format": "date-time" },
+    "expires_at":    { "type": "string", "format": "date-time" },
+    "parameters":    { "type": "object" }
+  }
+}

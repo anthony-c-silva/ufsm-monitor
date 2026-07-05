@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ufsm-monitor/contracts/result.schema.json",
+  "title": "MeasurementResultEnvelope",
+  "description": "Envelope comum emitido por todo probe para qualquer tipo de medicao. O bloco 'result' carrega o payload especifico do tipo.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "run_id",
+    "probe_id",
+    "kind",
+    "observed_at",
+    "started_at",
+    "finished_at",
+    "status",
+    "result"
+  ],
+  "properties": {
+    "schema_version": { "type": "string" },
+    "run_id":        { "type": "string", "format": "uuid" },
+    "task_id":       { "type": "string" },
+    "plan_id":       { "type": "string" },
+    "plan_revision": { "type": "integer", "minimum": 0 },
+    "job_id":        { "type": "string" },
+    "probe_id":      { "type": "string", "minLength": 1 },
+    "kind": {
+      "type": "string",
+      "enum": ["icmp", "iperf3", "dns", "http", "traceroute", "sysinfo"]
+    },
+    "target":        { "type": "string" },
+    "target_probe":  { "type": "string" },
+    "observed_at":   { "type": "string", "format": "date-time" },
+    "started_at":    { "type": "string", "format": "date-time" },
+    "finished_at":   { "type": "string", "format": "date-time" },
+    "status": {
+      "type": "string",
+      "enum": ["success", "failure", "timeout"]
+    },
+    "error_message": { "type": ["string", "null"] },
+    "result":        { "type": ["object", "null"] },
+    "raw":           {}
+  }
+}

@@ -1,0 +1,31 @@
+[Unit]
+Description=UFSM Distributed Monitoring Agent
+Documentation=https://github.com/anthonycarlosp7/ufsm-monitor-agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ufsm-monitor
+Group=ufsm-monitor
+ExecStart=/usr/local/bin/ufsm-monitor-agent serve
+Restart=always
+RestartSec=5
+EnvironmentFile=/etc/ufsm-monitor/agent.env
+
+# Diretorio de estado: cria/gerencia /var/lib/ufsm-monitor (banco, identidade, spool)
+StateDirectory=ufsm-monitor
+
+# Endurecimento basico do processo
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/ufsm-monitor
+
+# mtr/traceroute precisam de sockets raw:
+AmbientCapabilities=CAP_NET_RAW
+CapabilityBoundingSet=CAP_NET_RAW
+
+[Install]
+WantedBy=multi-user.target

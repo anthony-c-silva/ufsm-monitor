@@ -1,0 +1,10 @@
+{
+  "task_id": "7a08f951-c4e1-4f0d-b8ec-f2e80ede325a",
+  "job_id": "external-http",
+  "type": "http",
+  "source_probe": "probe-dev-01",
+  "target": "https://www.ufsm.br",
+  "not_before": "2026-07-05T00:00:00Z",
+  "expires_at": "2035-01-01T00:00:00Z",
+  "parameters": { "method": "GET", "timeout_ms": 5000 }
+}

@@ -1,0 +1,16 @@
+{
+  "task_id": "6fd91840-b3d0-4fbc-a7fb-e1d79dcd214f",
+  "plan_id": "campus-baseline-v1",
+  "plan_revision": 4,
+  "job_id": "mesh-icmp",
+  "type": "icmp",
+  "source_probe": "probe-ct-01",
+  "target_probe": "probe-cpd-01",
+  "target": "10.10.20.30",
+  "not_before": "2026-07-05T18:00:00Z",
+  "expires_at": "2026-07-05T18:01:30Z",
+  "parameters": {
+    "samples": 10,
+    "timeout_ms": 1000
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "schema_version": "1.0",
+  "run_id": "5e6f7a8b-9c0d-1e2f-3a4b-5c6d7e8f9012",
+  "probe_id": "probe-ct-01",
+  "kind": "sysinfo",
+  "observed_at": "2026-07-05T18:25:00Z",
+  "started_at": "2026-07-05T18:25:00Z",
+  "finished_at": "2026-07-05T18:25:00Z",
+  "status": "success",
+  "result": {
+    "hostname": "rpi-ct-01",
+    "agent_version": "0.1.0-prototype",
+    "os": "linux",
+    "arch": "arm64",
+    "tool_versions": {
+      "fping": "fping: Version 5.1",
+      "iperf3": "iperf 3.12",
+      "dig": "DiG 9.18.24",
+      "curl": "curl 8.5.0",
+      "mtr": "mtr 0.95"
+    },
+    "ip_address": "10.10.20.11",
+    "interface": "eth0",
+    "mac_address": "dc:a6:32:aa:bb:cc",
+    "gateway": "10.10.20.1",
+    "dns_resolvers": ["10.0.0.53", "10.0.0.54"],
+    "cpu_count": 4,
+    "load_avg": [0.12, 0.09, 0.05],
+    "mem_total_kb": 3882436,
+    "mem_available_kb": 3120044,
+    "disk_total_bytes": 31000000000,
+    "disk_free_bytes": 24000000000,
+    "time_sync": "synchronized",
+    "deployment": "CT-sala-101",
+    "vlan": "vlan-monitor"
+  }
+}

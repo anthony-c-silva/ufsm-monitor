@@ -1,0 +1,34 @@
+# Binários compilados
+/prototypes/bin/
+/agent/bin/
+*.exe
+*.test
+*.out
+
+# Bancos locais / dados de teste
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.db
+*.db-wal
+*.db-shm
+
+# Spool local de tarefas do agente (execução em dev)
+/agent/tasks/
+
+# Ambiente
+.env
+*.env
+!*.env.example
+
+# Editores
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Python (controlador)
+__pycache__/
+*.pyc
+.venv/
+venv/
