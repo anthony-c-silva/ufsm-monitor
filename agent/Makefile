@@ -1,6 +1,7 @@
-BIN := bin
-APP := ufsm-monitor-agent
-PKG := ./cmd/ufsm-monitor-agent
+BIN  := bin
+APP  := ufsm-monitor-agent
+APPS := ufsm-monitor-agent publish-task sink-results
+PKG  := ./cmd/ufsm-monitor-agent
 
 ARM64 := GOOS=linux GOARCH=arm64
 ARMV7 := GOOS=linux GOARCH=arm GOARM=7
@@ -9,15 +10,17 @@ ARMV7 := GOOS=linux GOARCH=arm GOARM=7
 
 all: build
 
-# Baixa e fixa as dependências (modernc.org/sqlite). Precisa de rede — rode uma vez.
+# Baixa e fixa as dependências (modernc.org/sqlite, rabbitmq/amqp091-go).
+# Precisa de rede — rode uma vez.
 deps:
 	go mod tidy
 
+# Compila o agente + as ferramentas de teste (publish-task, sink-results).
 build:
 	@mkdir -p $(BIN)
-	go build -o $(BIN)/$(APP) $(PKG)
+	@for a in $(APPS); do echo "build $$a"; go build -o $(BIN)/$$a ./cmd/$$a; done
 
-# Cross-compile para Raspberry Pi (modernc.org/sqlite é Go puro: CGO_ENABLED=0).
+# Cross-compile do agente para Raspberry Pi (Go puro: CGO_ENABLED=0).
 build-arm64:
 	@mkdir -p $(BIN)/arm64
 	CGO_ENABLED=0 $(ARM64) go build -o $(BIN)/arm64/$(APP) $(PKG)

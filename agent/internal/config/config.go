@@ -22,6 +22,7 @@ type Config struct {
 	InventoryInterval time.Duration // frequencia da coleta de inventario
 	Deployment        string        // rotulo da implantacao (predio/sala), opcional
 	VLAN              string        // rede/VLAN logica, opcional
+	AMQPURL           string        // URL do RabbitMQ; "off" desabilita o broker (só spool)
 }
 
 // Load le a configuracao do ambiente, aplicando defaults sensatos.
@@ -34,6 +35,7 @@ func Load() Config {
 		InventoryInterval: time.Duration(envInt("INVENTORY_INTERVAL_SECONDS", 60)) * time.Second,
 		Deployment:        os.Getenv("DEPLOYMENT"),
 		VLAN:              os.Getenv("VLAN"),
+		AMQPURL:           env("AMQP_URL", "amqp://guest:guest@localhost:5672/"),
 	}
 }
 

@@ -26,6 +26,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/anthonycarlosp7/ufsm-monitor-agent/internal/broker"
 	"github.com/anthonycarlosp7/ufsm-monitor-agent/internal/config"
 	"github.com/anthonycarlosp7/ufsm-monitor-agent/internal/health"
 	"github.com/anthonycarlosp7/ufsm-monitor-agent/internal/measure"
@@ -123,6 +124,17 @@ func serve() error {
 			}
 		}
 	}()
+
+	// Integracao com RabbitMQ (Fase 3): consumir comandos e publicar resultados.
+	if cfg.AMQPURL != "" && cfg.AMQPURL != "off" {
+		log.Printf("AMQP habilitado: %s", cfg.AMQPURL)
+		wg.Add(1)
+		go func() { defer wg.Done(); runConsumer(ctx, cfg, probeID, ob) }()
+		wg.Add(1)
+		go func() { defer wg.Done(); runPublisher(ctx, cfg, probeID, ob) }()
+	} else {
+		log.Printf("AMQP desabilitado (apenas spool local)")
+	}
 
 	// Servidor de saude.
 	srv := &http.Server{
@@ -317,5 +329,125 @@ func moveTo(path, dir string) {
 	dst := filepath.Join(dir, filepath.Base(path))
 	if err := os.Rename(path, dst); err != nil {
 		log.Printf("mover %s -> %s: %v", filepath.Base(path), dir, err)
+	}
+}
+
+// runConsumer mantem uma conexao com o broker para consumir comandos, com
+// reconexao automatica. Cada comando vira uma execucao (persistida na outbox).
+func runConsumer(ctx context.Context, cfg config.Config, probeID string, ob *outbox.DB) {
+	for ctx.Err() == nil {
+		conn, err := broker.Dial(cfg.AMQPURL)
+		if err != nil {
+			log.Printf("consumidor: falha ao conectar (%v); nova tentativa em 5s", err)
+			if sleepCtx(ctx, 5*time.Second) {
+				return
+			}
+			continue
+		}
+		log.Printf("consumidor: conectado ao broker")
+		err = conn.ConsumeCommands(ctx, probeID, func(body []byte) error {
+			var t model.Task
+			if err := json.Unmarshal(body, &t); err != nil {
+				log.Printf("comando com JSON invalido, descartado: %v", err)
+				_ = ob.RecordFailure("", "json invalido: "+err.Error())
+				return nil // ack: mensagem malformada nao deve ser reentregue
+			}
+			env, execErr := executeTask(ctx, &t, probeID, ob)
+			if execErr != nil {
+				log.Printf("comando task_id=%s falhou: %v", t.TaskID, execErr)
+				return nil // ja registrado na outbox; ack para nao reentregar
+			}
+			log.Printf("comando executado task_id=%s tipo=%s status=%s", t.TaskID, t.Type, env.Status)
+			return nil
+		})
+		conn.Close()
+		if ctx.Err() != nil {
+			return
+		}
+		if err != nil {
+			log.Printf("consumidor: %v", err)
+		}
+		if sleepCtx(ctx, 5*time.Second) {
+			return
+		}
+	}
+}
+
+// runPublisher mantem uma conexao para drenar a outbox, com reconexao automatica.
+func runPublisher(ctx context.Context, cfg config.Config, probeID string, ob *outbox.DB) {
+	for ctx.Err() == nil {
+		conn, err := broker.Dial(cfg.AMQPURL)
+		if err != nil {
+			if sleepCtx(ctx, 5*time.Second) {
+				return
+			}
+			continue
+		}
+		if _, err := conn.DeclareResultsQueue(); err != nil {
+			log.Printf("publisher: declarar fila de resultados: %v", err)
+			conn.Close()
+			if sleepCtx(ctx, 5*time.Second) {
+				return
+			}
+			continue
+		}
+		log.Printf("publisher: conectado ao broker")
+		err = drainLoop(ctx, conn, ob, probeID)
+		conn.Close()
+		if ctx.Err() != nil {
+			return
+		}
+		if err != nil {
+			log.Printf("publisher: %v (reconectando em 5s)", err)
+		}
+		if sleepCtx(ctx, 5*time.Second) {
+			return
+		}
+	}
+}
+
+// drainLoop publica os resultados pendentes da outbox (com confirm) e os remove
+// somente apos a confirmacao do broker. Emite tambem um heartbeat periodico.
+// Retorna erro em caso de falha de publicacao (para acionar reconexao).
+func drainLoop(ctx context.Context, conn *broker.Conn, ob *outbox.DB, probeID string) error {
+	drain := time.NewTicker(2 * time.Second)
+	defer drain.Stop()
+	heartbeat := time.NewTicker(30 * time.Second)
+	defer heartbeat.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-heartbeat.C:
+			body := []byte(fmt.Sprintf(`{"probe_id":%q,"ts":%q}`, probeID, time.Now().UTC().Format(time.RFC3339)))
+			if err := conn.PublishEvent(probeID, "heartbeat", body); err != nil {
+				return err
+			}
+		case <-drain.C:
+			results, err := ob.PendingResults(100)
+			if err != nil {
+				log.Printf("publisher: ler outbox: %v", err)
+				continue
+			}
+			for _, r := range results {
+				if err := conn.PublishResult(r.Kind, []byte(r.Payload)); err != nil {
+					return err // provavel queda de conexao -> reconectar
+				}
+				if err := ob.AckResult(r.RunID); err != nil {
+					log.Printf("publisher: remover %s da outbox: %v", r.RunID, err)
+				}
+			}
+		}
+	}
+}
+
+// sleepCtx dorme d ou retorna true se o contexto for cancelado antes.
+func sleepCtx(ctx context.Context, d time.Duration) bool {
+	select {
+	case <-ctx.Done():
+		return true
+	case <-time.After(d):
+		return false
 	}
 }

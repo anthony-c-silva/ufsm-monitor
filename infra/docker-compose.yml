@@ -1,0 +1,57 @@
+name: ufsm-monitor
+
+# Infraestrutura de apoio da plataforma.
+# Fase 3: apenas o RabbitMQ (barramento de mensagens).
+# Fases 5+: descomente PostgreSQL/TimescaleDB e Grafana.
+
+services:
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: ufsm-rabbitmq
+    hostname: ufsm-rabbitmq
+    ports:
+      - "5672:5672"     # AMQP (o agente conecta aqui)
+      - "15672:15672"   # Management UI (navegador: http://localhost:15672)
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  # --- Fase 5 (descomente quando chegar lá) -------------------------------
+  # timescaledb:
+  #   image: timescale/timescaledb:latest-pg16
+  #   container_name: ufsm-timescaledb
+  #   ports:
+  #     - "5432:5432"
+  #   environment:
+  #     POSTGRES_USER: ufsm
+  #     POSTGRES_PASSWORD: ufsm
+  #     POSTGRES_DB: monitor
+  #   volumes:
+  #     - pg-data:/var/lib/postgresql/data
+  #   restart: unless-stopped
+  #
+  # grafana:
+  #   image: grafana/grafana:latest
+  #   container_name: ufsm-grafana
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     GF_SECURITY_ADMIN_PASSWORD: admin
+  #   volumes:
+  #     - grafana-data:/var/lib/grafana
+  #   depends_on:
+  #     - timescaledb
+  #   restart: unless-stopped
+
+volumes:
+  rabbitmq-data:
+  # pg-data:
+  # grafana-data:
