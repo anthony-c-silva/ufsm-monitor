@@ -205,3 +205,37 @@ validação recusa planos com destino não autorizado (comprovado).
 grava no PostgreSQL/TimescaleDB (hypertables + agregações contínuas), Grafana com
 dashboards e a matriz probe × destino. E um scheduler periódico no controlador
 (rodar planos automaticamente por `period_seconds`).
+
+---
+
+## 2026-07-06 — Fase 5 (ingestão + Grafana) implementada e validada
+
+**Ingestão** (`controller/app/ingestion.py`, pika + SQLAlchemy):
+- Cria o schema no startup: `measurement_runs` (auditoria + `raw_payload`) e tabelas
+  tipadas (`icmp/dns/http/iperf_measurements`), todas convertidas em **hypertables**
+  do TimescaleDB. `CREATE EXTENSION IF NOT EXISTS timescaledb`.
+- Consome `monitor.ingestion.results` (`result.#`), insere com `ON CONFLICT DO NOTHING`
+  (idempotente) e dá ack. Substitui o `sink-results`.
+
+**Grafana** (`infra/grafana/`): provisionamento automático de datasource (TimescaleDB)
+e do dashboard **"UFSM Monitor — Visão Geral"** (5 painéis): RTT médio, perda %, HTTP
+TTFB/total, DNS, e a **matriz Origem × Destino** (tabela com cores por RTT/perda).
+
+**Validação ✔** Dados fluindo: `POST /plans/{id}/run` → agente executa → ingestão grava
+no TimescaleDB (confirmado no `psql`: icmp/http/dns com métricas). Dashboard renderiza
+os gráficos e a matriz colorida.
+
+**Dois perrengues resolvidos (úteis pra reprodução/escrita):**
+- **Grafana 11:** o banco do datasource Postgres precisa ir em `jsonData.database`
+  (não no campo `database` do topo) — senão dá "no default database configured".
+- **Relógio do WSL adiantado:** o container gravava timestamps "no futuro" e o
+  "Last 6 hours" não os alcançava. Contornado com `To: now+6h`; corrigir com
+  `wsl --shutdown` (ressincroniza o relógio).
+
+**Estado do projeto:** o núcleo do "resultado mínimo esperado" está atingido —
+medições (icmp/dns/http/traceroute/iperf3), planos declarativos, orquestração AMQP,
+persistência tolerante a falha, consolidação no TimescaleDB e dashboards com a matriz.
+
+**Falta (Fase 6 / extensões):** vários probes em malha, controle de concorrência e
+serialização de iperf3, scheduler periódico automático, e agregações contínuas
+(5min/1h/1d) para consultas históricas mais rápidas.

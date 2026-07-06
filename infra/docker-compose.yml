@@ -44,21 +44,25 @@ services:
       retries: 5
     restart: unless-stopped
 
-  # --- Fase 5 (descomente quando chegar lá) -------------------------------
-  # grafana:
-  #   image: grafana/grafana:latest
-  #   container_name: ufsm-grafana
-  #   ports:
-  #     - "3000:3000"
-  #   environment:
-  #     GF_SECURITY_ADMIN_PASSWORD: admin
-  #   volumes:
-  #     - grafana-data:/var/lib/grafana
-  #   depends_on:
-  #     - timescaledb
-  #   restart: unless-stopped
+  # Grafana: dashboards e a matriz probe × destino (Fase 5).
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ufsm-grafana
+    ports:
+      - "3000:3000"   # navegador: http://localhost:3000 (admin/admin)
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      - timescaledb
+    restart: unless-stopped
 
 volumes:
   rabbitmq-data:
   pg-data:
-  # grafana-data:
+  grafana-data:
