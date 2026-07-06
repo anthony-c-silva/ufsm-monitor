@@ -169,3 +169,39 @@ resultado perdido — critério central da Fase 3 comprovado.
 **Próximo (Fase 4)** — controlador em Python/FastAPI: inventário, destinos, grupos,
 planos JSON + validador + expansão de malha, scheduler, e o serviço de ingestão que
 substitui o `sink-results` gravando no PostgreSQL/TimescaleDB.
+
+---
+
+## 2026-07-06 — Fase 4 (controlador) implementada e validada
+
+**Infra:** habilitado o **PostgreSQL/TimescaleDB** no `docker-compose` (porta 5432,
+db `monitor`, user/pass `ufsm`).
+
+**Controlador** (`controller/`, FastAPI + SQLAlchemy + Pydantic + pika):
+- `models`: probes, targets (allowlist), groups, plans, task_instances (fonte de
+  verdade no Postgres; tabelas criadas no startup).
+- `schemas`: `Plan`/`Job` Pydantic espelhando o plano declarativo da spec.
+- `planning`: **validador** (probes existem/ativos, destinos autorizados, período
+  mínimo, duração máx. iperf3, limite de tarefas) e **expansão** (grupos/topologias
+  → tarefas concretas, `n(n-1)`, `exclude_self`).
+- `publisher` (pika): publica em `monitor.commands` com publisher confirm; declara a
+  fila de comandos do probe (idempotente) antes de publicar.
+- API: `/probes`, `/targets`, `/groups`, `/plans`, `/plans/validate`,
+  `/plans/{id}/run`, `/health`, `/docs`.
+
+**Ambiente:** Python 3.14 (Ubuntu resolute). **venv precisou ser criada no `~`**
+(não em `/mnt/c`, onde o `ensurepip` falha). `pip install -r requirements.txt` OK.
+
+**Validação ✔** `py_compile` limpo. Fluxo end-to-end: cadastrar probe + destinos
+(allowlist) → `POST /plans/validate` retornou `valid:true`, `total_tasks_per_cycle:3`
+(icmp/http/dns) → `POST /plans` armazenou → `POST /plans/{id}/run` retornou
+`published:3`. Ciclo fechado: **admin cria plano → controlador valida/expande/publica
+→ agente executa → resultado volta**. Critério de saída da Fase 4 atingido.
+
+Nota: destinos externos exigem cadastro em `/targets` (allowlist, spec 12) — a
+validação recusa planos com destino não autorizado (comprovado).
+
+**Próximo (Fase 5)** — serviço de ingestão que consome `monitor.ingestion.results` e
+grava no PostgreSQL/TimescaleDB (hypertables + agregações contínuas), Grafana com
+dashboards e a matriz probe × destino. E um scheduler periódico no controlador
+(rodar planos automaticamente por `period_seconds`).

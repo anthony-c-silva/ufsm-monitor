@@ -24,20 +24,27 @@ services:
       retries: 5
     restart: unless-stopped
 
+  # PostgreSQL + TimescaleDB: fonte de verdade (inventário, planos) na Fase 4;
+  # séries temporais/hypertables na Fase 5.
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: ufsm-timescaledb
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ufsm
+      POSTGRES_PASSWORD: ufsm
+      POSTGRES_DB: monitor
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ufsm -d monitor"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
   # --- Fase 5 (descomente quando chegar lá) -------------------------------
-  # timescaledb:
-  #   image: timescale/timescaledb:latest-pg16
-  #   container_name: ufsm-timescaledb
-  #   ports:
-  #     - "5432:5432"
-  #   environment:
-  #     POSTGRES_USER: ufsm
-  #     POSTGRES_PASSWORD: ufsm
-  #     POSTGRES_DB: monitor
-  #   volumes:
-  #     - pg-data:/var/lib/postgresql/data
-  #   restart: unless-stopped
-  #
   # grafana:
   #   image: grafana/grafana:latest
   #   container_name: ufsm-grafana
@@ -53,5 +60,5 @@ services:
 
 volumes:
   rabbitmq-data:
-  # pg-data:
+  pg-data:
   # grafana-data:

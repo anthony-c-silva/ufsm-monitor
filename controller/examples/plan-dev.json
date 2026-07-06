@@ -1,0 +1,31 @@
+{
+  "plan_id": "dev-baseline",
+  "revision": 1,
+  "enabled": true,
+  "groups": { "campus": ["probe-dev-01"] },
+  "jobs": [
+    {
+      "id": "icmp-cloudflare",
+      "type": "icmp",
+      "sources": ["group:campus"],
+      "targets": ["1.1.1.1"],
+      "period_seconds": 60,
+      "samples": 10
+    },
+    {
+      "id": "http-ufsm",
+      "type": "http",
+      "sources": ["group:campus"],
+      "targets": ["https://www.ufsm.br"],
+      "period_seconds": 300
+    },
+    {
+      "id": "dns-ufsm",
+      "type": "dns",
+      "sources": ["group:campus"],
+      "targets": ["www.ufsm.br"],
+      "period_seconds": 120,
+      "qtype": "A"
+    }
+  ]
+}
