@@ -1,0 +1,14 @@
+digraph C4_Contexto {
+  rankdir=TB;
+  graph [fontname="Helvetica", labelloc="t", fontsize=17, fontcolor="#1a1a1a",
+         label="Modelo C4 — Nivel 1: Contexto do Sistema\nPlataforma Distribuida de Monitoramento Ativo da Rede da UFSM", nodesep=0.7, ranksep=0.9];
+  node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10, margin="0.22,0.14"];
+  edge [fontname="Helvetica", fontsize=9, color="#5a6b7b", fontcolor="#33475b", penwidth=1.3];
+
+  admin  [label=<<b>Administrador</b><br/><font point-size="8" color="white">[Pessoa — Equipe de Redes da UFSM]</font>>, fillcolor="#08427b", fontcolor="white"];
+  sistema[label=<<b>Plataforma de Monitoramento Ativo</b><br/><font point-size="8" color="white">[Sistema de Software]</font><br/><font point-size="8" color="white">Executa medicoes distribuidas por probes,<br/>consolida e apresenta series historicas</font>>, fillcolor="#1168bd", fontcolor="white", width=3.4];
+  alvos  [label=<<b>Destinos de medicao</b><br/><font point-size="8" color="white">[Sistemas externos]</font><br/><font point-size="8" color="white">Servicos internos/externos, resolvedores DNS,<br/>sites e VPS externa de referencia</font>>, fillcolor="#8b8b8b", fontcolor="white"];
+
+  admin   -> sistema [label="define planos de medicao (JSON)\ne observa dashboards / matriz  [HTTPS]"];
+  sistema -> alvos   [label="mede disponibilidade, latencia, perda, DNS,\nHTTP/HTTPS, caminho e vazao"];
+}

@@ -1,0 +1,36 @@
+digraph C4_Conteineres {
+  rankdir=TB;
+  graph [fontname="Helvetica", labelloc="t", fontsize=17, fontcolor="#1a1a1a", compound=true,
+         label="Modelo C4 — Nivel 2: Conteineres\nPlataforma Distribuida de Monitoramento Ativo da Rede da UFSM", nodesep=0.55, ranksep=0.75];
+  node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=9.5, margin="0.18,0.12"];
+  edge [fontname="Helvetica", fontsize=8.5, color="#5a6b7b", fontcolor="#33475b", penwidth=1.2];
+
+  admin [label=<<b>Administrador</b><br/><font point-size="8" color="white">[Equipe de Redes]</font>>, fillcolor="#08427b", fontcolor="white"];
+
+  subgraph cluster_plat {
+    label="Plataforma de Monitoramento da Rede da UFSM";
+    labelloc="t"; fontname="Helvetica"; fontsize=11; fontcolor="#3b5064";
+    style="rounded,dashed"; color="#8fa3b5"; margin=18;
+
+    controlador [label=<<b>Controlador</b><br/><font point-size="8" color="white">[Python / FastAPI]</font><br/><font point-size="8" color="white">Inventario, planos JSON,<br/>validacao/expansao, scheduler, API</font>>, fillcolor="#1168bd", fontcolor="white"];
+    grafana     [label=<<b>Grafana</b><br/><font point-size="8" color="white">[Dashboards]</font><br/><font point-size="8" color="white">Graficos temporais e<br/>matriz probe x destino</font>>, fillcolor="#1168bd", fontcolor="white"];
+    rabbit      [label=<<b>RabbitMQ</b><br/><font point-size="8" color="white">[Broker AMQP]</font><br/><font point-size="8" color="white">Barramento de comandos<br/>e resultados</font>>, fillcolor="#1168bd", fontcolor="white"];
+    ingestao    [label=<<b>Servico de Ingestao</b><br/><font point-size="8" color="white">[Python]</font><br/><font point-size="8" color="white">Consome resultados<br/>e grava no banco</font>>, fillcolor="#1168bd", fontcolor="white"];
+    agente      [label=<<b>Agente (probe)</b><br/><font point-size="8" color="white">[Go — Raspberry Pi]</font><br/><font point-size="8" color="white">Executa medicoes, outbox SQLite<br/>(tolerante a falha), publica</font>>, fillcolor="#1168bd", fontcolor="white"];
+    db          [label=<<b>PostgreSQL + TimescaleDB</b><br/><font point-size="8" color="white">[Banco de dados]</font><br/><font point-size="8" color="white">Inventario, planos e<br/>series temporais (hypertables)</font>>, fillcolor="#0e5a9c", fontcolor="white", shape=cylinder];
+  }
+
+  alvos [label=<<b>Destinos de medicao</b><br/><font point-size="8" color="white">[Sistemas externos]</font><br/><font point-size="8" color="white">DNS, HTTP/HTTPS, hosts, VPS de referencia</font>>, fillcolor="#8b8b8b", fontcolor="white"];
+
+  admin -> controlador [label="cria/valida planos (HTTPS)"];
+  admin -> grafana     [label="visualiza (HTTPS)"];
+  controlador -> db    [label="inventario e planos (SQL)"];
+  controlador -> rabbit[label="publica tarefas (AMQP)"];
+  rabbit -> agente     [label="entrega comandos (AMQP)"];
+  agente -> rabbit     [label="publica resultados (AMQP)"];
+  rabbit -> ingestao   [label="entrega resultados (AMQP)"];
+  ingestao -> db       [label="grava series (SQL)"];
+  grafana -> db        [label="consulta (SQL)"];
+  agente -> alvos      [label="mede (ICMP, DNS, HTTP,\ntraceroute, iperf3)"];
+
+}
