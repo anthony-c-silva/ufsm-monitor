@@ -1,4 +1,4 @@
-/name: ufsm-monitor
+name: ufsm-monitor
 
 # Stack COMPLETA da plataforma para demo/execução local em Docker.
 # Sobe tudo com:  docker compose up -d --build
