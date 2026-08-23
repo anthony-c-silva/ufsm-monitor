@@ -1,0 +1,5 @@
+bin/
+tasks/
+*.db
+*.db-wal
+*.db-shm

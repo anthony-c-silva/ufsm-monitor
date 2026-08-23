@@ -1,0 +1,50 @@
+{
+  "plan_id": "demo-mesh",
+  "revision": 1,
+  "enabled": true,
+  "groups": { "probes": ["probe-a", "probe-b"] },
+  "jobs": [
+    {
+      "id": "mesh-icmp",
+      "type": "icmp",
+      "sources": ["group:probes"],
+      "targets": ["group:probes"],
+      "exclude_self": true,
+      "period_seconds": 60,
+      "samples": 10
+    },
+    {
+      "id": "mesh-dns",
+      "type": "dns",
+      "sources": ["group:probes"],
+      "targets": ["group:probes"],
+      "exclude_self": true,
+      "period_seconds": 120,
+      "qtype": "A"
+    },
+    {
+      "id": "mesh-iperf",
+      "type": "iperf3",
+      "sources": ["group:probes"],
+      "targets": ["group:probes"],
+      "exclude_self": true,
+      "period_seconds": 300,
+      "duration_seconds": 5
+    },
+    {
+      "id": "ext-icmp",
+      "type": "icmp",
+      "sources": ["group:probes"],
+      "targets": ["1.1.1.1"],
+      "period_seconds": 60,
+      "samples": 10
+    },
+    {
+      "id": "ext-http",
+      "type": "http",
+      "sources": ["group:probes"],
+      "targets": ["https://www.ufsm.br"],
+      "period_seconds": 300
+    }
+  ]
+}

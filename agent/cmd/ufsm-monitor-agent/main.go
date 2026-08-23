@@ -32,6 +32,7 @@ import (
 	"github.com/anthonycarlosp7/ufsm-monitor-agent/internal/measure"
 	"github.com/anthonycarlosp7/ufsm-monitor-agent/internal/model"
 	"github.com/anthonycarlosp7/ufsm-monitor-agent/internal/outbox"
+	"github.com/anthonycarlosp7/ufsm-monitor-agent/internal/targets"
 )
 
 func main() {
@@ -136,12 +137,37 @@ func serve() error {
 		log.Printf("AMQP desabilitado (apenas spool local)")
 	}
 
+	// Servicos de destino que o probe OFERECE (medicoes mutuas probe<->probe).
+	if cfg.Iperf3Server {
+		log.Printf("servidor iperf3 em :%d", cfg.Iperf3Port)
+		wg.Add(1)
+		go func() { defer wg.Done(); targets.RunIperf3Server(ctx, cfg.Iperf3Port) }()
+	}
+	if cfg.DNSServer {
+		log.Printf("servidor DNS em :%d", cfg.DNSPort)
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := targets.RunDNSServer(ctx, cfg.DNSPort, cfg.DNSAnswerIP); err != nil && ctx.Err() == nil {
+				log.Printf("servidor DNS desabilitado: %v (defina DNS_PORT p/ porta livre ou DNS_SERVER=off)", err)
+			}
+		}()
+	}
+
+	// Descricao dos servicos oferecidos (exposta em /health e /services).
+	services := map[string]any{
+		"icmp":        map[string]any{"enabled": true, "note": "respondido pelo sistema operacional"},
+		"http_health": map[string]any{"enabled": true, "addr": cfg.HealthAddr},
+		"iperf3":      map[string]any{"enabled": cfg.Iperf3Server, "port": cfg.Iperf3Port},
+		"dns":         map[string]any{"enabled": cfg.DNSServer, "port": cfg.DNSPort},
+	}
+
 	// Servidor de saude.
 	srv := &http.Server{
 		Addr: cfg.HealthAddr,
 		Handler: health.New(probeID, measure.AgentVersion, func() interface{} {
 			return inv.get()
-		}).Handler(),
+		}, services).Handler(),
 	}
 	wg.Add(1)
 	go func() {

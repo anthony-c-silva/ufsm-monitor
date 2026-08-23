@@ -7,9 +7,27 @@ Agente homogêneo executado em cada probe (Raspberry Pi). Um único binário Go 
 - persiste resultados numa **outbox SQLite (WAL)** *antes* de qualquer publicação,
   garantindo que nada se perca em queda de rede/broker (spec 9);
 - coleta **inventário** periódico (identidade permanente, IP, rota, DNS, CPU/mem/disco);
-- expõe **`/health`, `/version`, `/metadata`** (o `/` serve conteúdo mínimo, para ser
+- expõe **`/health`, `/version`, `/metadata`, `/services`** (o `/` serve conteúdo mínimo, para ser
   alvo de testes HTTP de outros probes — spec 4.2);
+- **oferece serviços de destino** para medições mútuas probe↔probe (ver abaixo);
 - roda como serviço **systemd** com reinício automático.
+
+## Serviços de destino (medições mútuas / malha)
+
+Além de **medir**, cada probe (e o servidor/controlador, que também roda um agente)
+**oferece serviços** para ser medido por outros probes — é o que viabiliza as
+topologias em estrela e malha:
+
+| Serviço | Como | Config |
+|---|---|---|
+| **ICMP** (ping) | respondido pelo sistema operacional | — |
+| **HTTP** | endpoint `/health` do próprio agente | `HEALTH_ADDR` (`:8080`) |
+| **iperf3** | servidor `iperf3 -s` gerenciado pelo agente | `IPERF3_SERVER`, `IPERF3_PORT` (5201) |
+| **DNS** | servidor DNS embutido (responde consultas A) | `DNS_SERVER`, `DNS_PORT` (53), `DNS_ANSWER_IP` |
+
+Assim, para medir "DNS até o Probe B" o plano usa `resolver = IP do Probe B`; para
+"vazão até o Probe B", `iperf3` com `target = Probe B`. Os serviços são consultáveis
+em `GET /services` e aparecem no `/health`.
 
 > **Fase 2:** as tarefas chegam por um diretório-spool local (`TASKS_DIR`). Na Fase 3,
 > esse spool será trocado por um consumidor **RabbitMQ** — o resto do fluxo
@@ -39,14 +57,15 @@ agent/
 
 ## ⚠️ Passo obrigatório: resolver dependências (precisa de rede)
 
-O `go.mod` ainda não fixou a dependência do SQLite. **Rode uma vez**, na sua máquina:
+Há dependências externas (SQLite `modernc.org/sqlite`, AMQP `rabbitmq/amqp091-go`
+e o servidor DNS `github.com/miekg/dns`). **Rode uma vez**, na sua máquina:
 
 ```bash
 cd agent
-go mod tidy      # baixa modernc.org/sqlite e gera go.sum
+go mod tidy      # baixa as dependências e gera/atualiza go.sum
 ```
 
-Sem isso, `go build` falha com "cannot find module for modernc.org/sqlite".
+Sem isso, `go build` falha com "cannot find module for ...".
 
 ## Build
 

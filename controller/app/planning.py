@@ -101,7 +101,13 @@ def expand(plan: Plan, db: Session) -> list[TaskSpec]:
                     continue
                 params = build_parameters(job)
                 if job.type == "dns":
-                    params["qname"] = addr  # o destino é o nome consultado
+                    if kind == "probe":
+                        # medir DNS ATÉ outro probe: o destino é o resolvedor
+                        params["resolver"] = addr
+                        params["qname"] = "probe.ufsm-monitor"  # nome de teste (o servidor DNS do probe responde qualquer A)
+                    else:
+                        # destino externo: o destino é o nome consultado
+                        params["qname"] = addr
                 tasks.append(
                     TaskSpec(
                         type=job.type,

@@ -18,15 +18,18 @@ type Server struct {
 	probeID  string
 	version  string
 	metadata MetadataProvider
+	services map[string]any
 	started  time.Time
 }
 
-// New cria um servidor de saude.
-func New(probeID, version string, metadata MetadataProvider) *Server {
+// New cria um servidor de saude. `services` descreve os servicos de destino que
+// o probe oferece (iperf3, dns, http, icmp) para medicoes mutuas.
+func New(probeID, version string, metadata MetadataProvider, services map[string]any) *Server {
 	return &Server{
 		probeID:  probeID,
 		version:  version,
 		metadata: metadata,
+		services: services,
 		started:  time.Now(),
 	}
 }
@@ -37,6 +40,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/health", s.handleHealth)
 	mux.HandleFunc("/version", s.handleVersion)
 	mux.HandleFunc("/metadata", s.handleMetadata)
+	mux.HandleFunc("/services", s.handleServices)
 	mux.HandleFunc("/", s.handleRoot)
 	return mux
 }
@@ -46,6 +50,14 @@ func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
 		"status":         "ok",
 		"probe_id":       s.probeID,
 		"uptime_seconds": int(time.Since(s.started).Seconds()),
+		"services":       s.services,
+	})
+}
+
+func (s *Server) handleServices(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{
+		"probe_id": s.probeID,
+		"services": s.services,
 	})
 }
 

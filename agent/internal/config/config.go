@@ -23,6 +23,13 @@ type Config struct {
 	Deployment        string        // rotulo da implantacao (predio/sala), opcional
 	VLAN              string        // rede/VLAN logica, opcional
 	AMQPURL           string        // URL do RabbitMQ; "off" desabilita o broker (só spool)
+
+	// Servicos de destino que o probe oferece (medicoes mutuas probe<->probe).
+	Iperf3Server bool   // se roda o servidor iperf3
+	Iperf3Port   int    // porta do servidor iperf3
+	DNSServer    bool   // se roda o servidor DNS
+	DNSPort      int    // porta do servidor DNS
+	DNSAnswerIP  string // IP retornado nas consultas A (default: IP do proprio probe)
 }
 
 // Load le a configuracao do ambiente, aplicando defaults sensatos.
@@ -36,6 +43,12 @@ func Load() Config {
 		Deployment:        os.Getenv("DEPLOYMENT"),
 		VLAN:              os.Getenv("VLAN"),
 		AMQPURL:           env("AMQP_URL", "amqp://guest:guest@localhost:5672/"),
+
+		Iperf3Server: env("IPERF3_SERVER", "on") != "off",
+		Iperf3Port:   envInt("IPERF3_PORT", 5201),
+		DNSServer:    env("DNS_SERVER", "on") != "off",
+		DNSPort:      envInt("DNS_PORT", 53),
+		DNSAnswerIP:  os.Getenv("DNS_ANSWER_IP"),
 	}
 }
 

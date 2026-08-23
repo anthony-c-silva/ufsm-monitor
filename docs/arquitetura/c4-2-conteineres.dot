@@ -1,36 +1,61 @@
 digraph C4_Conteineres {
-  rankdir=TB;
-  graph [fontname="Helvetica", labelloc="t", fontsize=17, fontcolor="#1a1a1a", compound=true,
-         label="Modelo C4 — Nivel 2: Conteineres\nPlataforma Distribuida de Monitoramento Ativo da Rede da UFSM", nodesep=0.55, ranksep=0.75];
-  node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=9.5, margin="0.18,0.12"];
-  edge [fontname="Helvetica", fontsize=8.5, color="#5a6b7b", fontcolor="#33475b", penwidth=1.2];
+  rankdir=TB; compound=true; newrank=true; splines=true;
+  graph [fontname="Helvetica", labelloc="t", fontsize=16, fontcolor="#1a1a1a",
+         label="Modelo C4 - Nivel 2: Conteineres\nPlataforma Distribuida de Monitoramento Ativo da Rede da UFSM",
+         nodesep=0.6, ranksep=0.85];
+  node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=9.5, margin="0.17,0.11"];
 
   admin [label=<<b>Administrador</b><br/><font point-size="8" color="white">[Equipe de Redes]</font>>, fillcolor="#08427b", fontcolor="white"];
 
-  subgraph cluster_plat {
-    label="Plataforma de Monitoramento da Rede da UFSM";
-    labelloc="t"; fontname="Helvetica"; fontsize=11; fontcolor="#3b5064";
-    style="rounded,dashed"; color="#8fa3b5"; margin=18;
-
-    controlador [label=<<b>Controlador</b><br/><font point-size="8" color="white">[Python / FastAPI]</font><br/><font point-size="8" color="white">Inventario, planos JSON,<br/>validacao/expansao, scheduler, API</font>>, fillcolor="#1168bd", fontcolor="white"];
-    grafana     [label=<<b>Grafana</b><br/><font point-size="8" color="white">[Dashboards]</font><br/><font point-size="8" color="white">Graficos temporais e<br/>matriz probe x destino</font>>, fillcolor="#1168bd", fontcolor="white"];
-    rabbit      [label=<<b>RabbitMQ</b><br/><font point-size="8" color="white">[Broker AMQP]</font><br/><font point-size="8" color="white">Barramento de comandos<br/>e resultados</font>>, fillcolor="#1168bd", fontcolor="white"];
-    ingestao    [label=<<b>Servico de Ingestao</b><br/><font point-size="8" color="white">[Python]</font><br/><font point-size="8" color="white">Consome resultados<br/>e grava no banco</font>>, fillcolor="#1168bd", fontcolor="white"];
-    agente      [label=<<b>Agente (probe)</b><br/><font point-size="8" color="white">[Go — Raspberry Pi]</font><br/><font point-size="8" color="white">Executa medicoes, outbox SQLite<br/>(tolerante a falha), publica</font>>, fillcolor="#1168bd", fontcolor="white"];
-    db          [label=<<b>PostgreSQL + TimescaleDB</b><br/><font point-size="8" color="white">[Banco de dados]</font><br/><font point-size="8" color="white">Inventario, planos e<br/>series temporais (hypertables)</font>>, fillcolor="#0e5a9c", fontcolor="white", shape=cylinder];
+  subgraph cluster_ctrl {
+    label="Servidor central - orquestracao e armazenamento";
+    labelloc="t"; fontname="Helvetica"; fontsize=10.5; fontcolor="#3b5064";
+    style="rounded,dashed"; color="#8fa3b5"; margin=16;
+    controlador [label=<<b>Controlador</b><br/><font point-size="8" color="white">[Python / FastAPI]</font><br/><font point-size="8" color="white">Planos JSON, validacao/expansao, scheduler</font>>, fillcolor="#1168bd", fontcolor="white"];
+    grafana     [label=<<b>Grafana</b><br/><font point-size="8" color="white">[Dashboards]</font><br/><font point-size="8" color="white">Graficos e matriz probe x destino</font>>, fillcolor="#1168bd", fontcolor="white"];
+    rabbit      [label=<<b>RabbitMQ</b><br/><font point-size="8" color="white">[Broker AMQP]</font><br/><font point-size="8" color="white">Comandos e resultados</font>>, fillcolor="#1168bd", fontcolor="white"];
+    ingestao    [label=<<b>Servico de Ingestao</b><br/><font point-size="8" color="white">[Python]</font><br/><font point-size="8" color="white">Grava resultados no banco</font>>, fillcolor="#1168bd", fontcolor="white"];
+    db          [label=<<b>PostgreSQL + TimescaleDB</b><br/><font point-size="8" color="white">[Banco de dados]</font><br/><font point-size="8" color="white">Inventario, planos e series temporais</font>>, fillcolor="#0e5a9c", fontcolor="white", shape=cylinder];
   }
 
-  alvos [label=<<b>Destinos de medicao</b><br/><font point-size="8" color="white">[Sistemas externos]</font><br/><font point-size="8" color="white">DNS, HTTP/HTTPS, hosts, VPS de referencia</font>>, fillcolor="#8b8b8b", fontcolor="white"];
+  subgraph cluster_probes {
+    label="Sondas de medicao - probes homogeneos (cada probe mede e e medido)";
+    labelloc="t"; fontname="Helvetica"; fontsize=10.5; fontcolor="#176a30";
+    style="rounded,dashed"; color="#4fa06a"; margin=16;
+    probe1   [label=<<b>Agente - Probe A</b><br/><font point-size="8" color="white">[Go / Raspberry Pi - ex.: CT]</font><br/><font point-size="8" color="white">Mede, outbox SQLite, publica</font>>, fillcolor="#2f7d4f", fontcolor="white"];
+    probeSrv [label=<<b>Agente no Servidor</b><br/><font point-size="8" color="white">[Go - centro da estrela]</font><br/><font point-size="8" color="white">O servidor tambem atua como probe</font>>, fillcolor="#2f7d4f", fontcolor="white"];
+    probe2   [label=<<b>Agente - Probe B</b><br/><font point-size="8" color="white">[Go / Raspberry Pi - ex.: CPD]</font><br/><font point-size="8" color="white">Mede, outbox SQLite, publica</font>>, fillcolor="#2f7d4f", fontcolor="white"];
+  }
 
+  alvos [label=<<b>Destinos externos</b><br/><font point-size="8" color="white">[Sistemas externos]</font><br/><font point-size="8" color="white">DNS, HTTP/HTTPS, hosts, VPS de referencia</font>>, fillcolor="#8b8b8b", fontcolor="white"];
+
+  legenda [shape=box, style="rounded,filled", fillcolor="#f6f8fa", color="#c9d6e5", fontsize=8.4, fontcolor="#33475b",
+    label=<<b>Legenda</b><br align="left"/><font color="#33475b">--- Linha cheia: controle e dados (AMQP, SQL, HTTPS)</font><br align="left"/><font color="#176a30">- - Linha tracejada verde: medicoes ativas bidirecionais</font><br align="left"/><font color="#176a30">&nbsp;&nbsp;&nbsp;&nbsp;(ICMP, DNS, HTTP/HTTPS, traceroute, iperf3) - estrela e malha</font><br align="left"/>>];
+
+  // ---------- Faixas de alinhamento ----------
+  { rank=same; controlador; grafana; }
+  { rank=same; rabbit; ingestao; db; }
+  { rank=same; probe1; probeSrv; probe2; }
+  probe1 -> probeSrv -> probe2 [style=invis, weight=100];
+  { rank=same; alvos; legenda; }
+
+  // ---------- Plano de controle e dados (linha cheia) ----------
+  edge [fontname="Helvetica", fontsize=8.3, color="#5a6b7b", fontcolor="#33475b", penwidth=1.15];
   admin -> controlador [label="cria/valida planos (HTTPS)"];
   admin -> grafana     [label="visualiza (HTTPS)"];
-  controlador -> db    [label="inventario e planos (SQL)"];
   controlador -> rabbit[label="publica tarefas (AMQP)"];
-  rabbit -> agente     [label="entrega comandos (AMQP)"];
-  agente -> rabbit     [label="publica resultados (AMQP)"];
-  rabbit -> ingestao   [label="entrega resultados (AMQP)"];
-  ingestao -> db       [label="grava series (SQL)"];
+  controlador -> db    [label="inventario e planos (SQL)"];
   grafana -> db        [label="consulta (SQL)"];
-  agente -> alvos      [label="mede (ICMP, DNS, HTTP,\ntraceroute, iperf3)"];
+  ingestao -> db       [label="grava series (SQL)", constraint=false];
+  rabbit -> ingestao   [label="entrega resultados (AMQP)", constraint=false];
+  rabbit  -> probe1 [lhead=cluster_probes, label="entrega comandos (AMQP)"];
+  probe2  -> rabbit [ltail=cluster_probes, label="publica resultados (AMQP)"];
 
+  // ---------- Plano de medicao (tracejado verde, bidirecional) ----------
+  edge [color="#1e7d3a", fontcolor="#176a30", style=dashed, dir=both, penwidth=1.6, arrowsize=0.75];
+  probe1  -> probeSrv [label="mede (estrela)", constraint=false];
+  probeSrv-> probe2   [label="mede (estrela)", constraint=false];
+  probe1  -> probe2   [label="mede (malha)", constraint=false];
+  probe1  -> alvos [label="mede", dir=forward];
+  probe2  -> alvos [label="mede", dir=forward];
 }

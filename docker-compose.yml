@@ -1,0 +1,144 @@
+/name: ufsm-monitor
+
+# Stack COMPLETA da plataforma para demo/execução local em Docker.
+# Sobe tudo com:  docker compose up -d --build
+#
+# Produção: no servidor central roda esta stack (menos os agentes de campo);
+# cada Raspberry Pi roda o binário Go do agente via systemd (não Docker).
+
+services:
+  # ---------------- Infraestrutura ----------------
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: ufsm-rabbitmq
+    hostname: ufsm-rabbitmq
+    ports:
+      - "5672:5672"     # AMQP
+      - "15672:15672"   # Management UI (http://localhost:15672 — guest/guest)
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: ufsm-timescaledb
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ufsm
+      POSTGRES_PASSWORD: ufsm
+      POSTGRES_DB: monitor
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ufsm -d monitor"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ufsm-grafana
+    ports:
+      - "3000:3000"     # http://localhost:3000 — admin/admin
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      - timescaledb
+    restart: unless-stopped
+
+  # ---------------- Aplicação (servidor central) ----------------
+  controller:
+    build: ./controller
+    container_name: ufsm-controller
+    ports:
+      - "8000:8000"     # API + /docs (http://localhost:8000/docs)
+    environment:
+      DATABASE_URL: postgresql+psycopg2://ufsm:ufsm@timescaledb:5432/monitor
+      AMQP_URL: amqp://guest:guest@rabbitmq:5672/
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  ingestion:
+    build: ./controller
+    container_name: ufsm-ingestion
+    command: ["python", "-m", "app.ingestion"]
+    environment:
+      DATABASE_URL: postgresql+psycopg2://ufsm:ufsm@timescaledb:5432/monitor
+      AMQP_URL: amqp://guest:guest@rabbitmq:5672/
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ---------------- Probes (agentes) — para demo local da malha ----------------
+  # Em produção estes seriam os Raspberry Pi físicos (binário + systemd).
+  agent-a:
+    build: ./agent
+    container_name: ufsm-agent-a
+    hostname: agent-a
+    ports:
+      - "8081:8080"     # /health, /services deste probe
+    environment:
+      PROBE_ID: probe-a
+      AMQP_URL: amqp://guest:guest@rabbitmq:5672/
+      SQLITE_PATH: /data/agent.db
+      TASKS_DIR: /data/tasks
+      HEALTH_ADDR: ":8080"
+      DNS_PORT: "53"
+      DEPLOYMENT: container-a
+    volumes:
+      - agent-a-data:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  agent-b:
+    build: ./agent
+    container_name: ufsm-agent-b
+    hostname: agent-b
+    ports:
+      - "8082:8080"
+    environment:
+      PROBE_ID: probe-b
+      AMQP_URL: amqp://guest:guest@rabbitmq:5672/
+      SQLITE_PATH: /data/agent.db
+      TASKS_DIR: /data/tasks
+      HEALTH_ADDR: ":8080"
+      DNS_PORT: "53"
+      DEPLOYMENT: container-b
+    volumes:
+      - agent-b-data:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  rabbitmq-data:
+  pg-data:
+  grafana-data:
+  agent-a-data:
+  agent-b-data:

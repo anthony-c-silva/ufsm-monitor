@@ -23,9 +23,10 @@ ProtectHome=true
 PrivateTmp=true
 ReadWritePaths=/var/lib/ufsm-monitor
 
-# mtr/traceroute precisam de sockets raw:
-AmbientCapabilities=CAP_NET_RAW
-CapabilityBoundingSet=CAP_NET_RAW
+# CAP_NET_RAW: mtr/traceroute (sockets raw).
+# CAP_NET_BIND_SERVICE: servidor DNS na porta 53 (porta privilegiada).
+AmbientCapabilities=CAP_NET_RAW CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_RAW CAP_NET_BIND_SERVICE
 
 [Install]
 WantedBy=multi-user.target
