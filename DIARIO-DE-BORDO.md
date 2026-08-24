@@ -239,3 +239,42 @@ persistência tolerante a falha, consolidação no TimescaleDB e dashboards com 
 **Falta (Fase 6 / extensões):** vários probes em malha, controle de concorrência e
 serialização de iperf3, scheduler periódico automático, e agregações contínuas
 (5min/1h/1d) para consultas históricas mais rápidas.
+
+---
+
+## 2026-08-18 — Reunião com o orientador + Fase 6 (malha) validada
+
+**Reunião (18/08):** arquitetura aprovada. Correção pedida pelo orientador: cada probe
+(e o servidor/controlador) deve **oferecer os serviços de destino** para medições
+mútuas probe↔probe (estrela + malha) — não basta o probe ser cliente. Também: começar a
+revisão bibliográfica (10 artigos: RIPE Atlas, PerfSONAR + ferramentas para redes sem
+fio/celular) e demo com Docker na próxima terça. Correção do C4 (malha) já feita.
+
+**Serviços de destino no agente** (`internal/targets/`):
+- **Servidor iperf3** (`iperf3 -s` gerenciado, porta 5201) — recebe testes de vazão.
+- **Servidor DNS** (lib `github.com/miekg/dns`, porta 53) — responde consultas A com o
+  IP do probe. systemd ganhou `CAP_NET_BIND_SERVICE`. Reportados em `/health` e `/services`.
+- ICMP (SO) e HTTP (`/health`) já cobriam os outros dois serviços.
+- Ajuste no controlador: expansão de job DNS para probe-alvo usa o destino como
+  **resolvedor** (não como qname).
+
+**DP-12 — Tudo em Docker + monorepo.** Criados `controller/Dockerfile`, `agent/Dockerfile`
+(multi-stage; instala fping/iperf3/dig/mtr) e um `docker-compose.yml` único na raiz
+(rabbitmq, timescaledb, grafana, controller, ingestion, agent-a, agent-b). Decisão de
+**manter monorepo**: em produção, o servidor central roda a stack em contêineres e cada
+Raspberry Pi roda só o binário Go do agente via systemd (mesmo repo, deploy por alvo).
+
+**Perrengues resolvidos:** (a) `go.mod` fixou `go 1.25.0` (dep exige) → imagem do build
+subida para `golang:1.25` + `GOTOOLCHAIN=auto`; (b) `bash` do PowerShell caía na distro
+WSL errada → rodar tudo pelo terminal Ubuntu; (c) senha do Grafana persistida no volume →
+`grafana-cli admin reset-admin-password admin`.
+
+**Validação ✔ (demo Docker):** `docker compose up -d --build` + `scripts/demo-seed.sh` →
+plano `demo-mesh` expandiu em 10 tarefas (icmp 4, dns 2, iperf3 2, http 2). No `psql`,
+`icmp_measurements` mostrou **probe-a ↔ probe-b medindo um ao outro** (0.1–0.3 ms) além
+dos externos (1.1.1.1 ~14 ms). Medição mútua comprovada de ponta a ponta.
+
+**Pendências (terça / ações do aluno):** pegar o Raspberry Pi 4 com o professor;
+selecionar 10 artigos; demonstrar rodando; corrigir a narrativa do fluxo de dados
+(tolerância a falha = outbox SQLite no agente; TimescaleDB = armazenamento final, não
+"backup intermediário").
