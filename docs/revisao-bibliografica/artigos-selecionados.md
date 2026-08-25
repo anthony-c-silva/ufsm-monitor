@@ -4,12 +4,12 @@
 **Aluno:** Anthony Carlos Da Silva · **Orientador:** Prof. Carlos Raniery
 
 Seleção inicial de 10 trabalhos sobre **plataformas de medição e monitoramento ativo de redes**,
-para compor o referencial teórico e os trabalhos relacionados. Priorizei trabalhos **muito citados**
-ou **recentes (2020+)**, cobrindo plataformas distribuídas por probes, medição em redes sem fio e em
-redes celulares. Links para acesso — baixar preferencialmente pela **rede da UFSM**.
+para compor o referencial teórico e os trabalhos relacionados. A seleção prioriza trabalhos **muito
+citados** ou **recentes (2020+)**, cobrindo plataformas distribuídas por probes, medição em redes sem
+fio e em redes celulares. Links para acesso — baixar preferencialmente pela **rede da UFSM**.
 
 > Conferir a citação completa (autores, páginas, DOI) de cada um no Google Acadêmico ao baixar;
-> os itens marcados com "(conferir)" ainda preciso validar.
+> os itens marcados com "(conferir)" ainda estão a validar.
 
 ---
 
@@ -20,7 +20,7 @@ Vaibhav Bajpai, Jürgen Schönwälder — _IEEE Communications Surveys & Tutoria
 🔗 https://ieeexplore.ieee.org/document/7076582/ · PDF: https://vaibhavbajpai.com/documents/papers/proceedings/lsmp-comst-2015.pdf
 _Anotação:_ levanta e classifica as principais plataformas de medição de desempenho da Internet,
 comparando cobertura, escala, métricas coletadas e arquitetura, além de discutir os esforços de
-padronização. Serve de mapa geral do domínio para situar a minha plataforma entre as existentes.
+padronização. Serve de mapa geral do domínio para situar a plataforma proposta entre as existentes.
 
 **2. A Comprehensive Survey of Recent Internet Measurement Techniques for Cyber Security**
 (autores a conferir) — _Computers & Security_, 2023.
@@ -36,35 +36,35 @@ Andreas Hanemann et al. — _ICSOC 2005_ (Springer LNCS).
 _Anotação:_ propõe uma arquitetura orientada a serviços para monitoramento de redes entre múltiplos
 domínios, com pontos de medição distribuídos que trocam dados de desempenho de forma padronizada.
 É uma referência conceitual clássica de medição federada, próxima da separação controlador/probes
-que adoto.
+adotada na plataforma proposta.
 
 **4. Lessons Learned From Using the RIPE Atlas Platform for Measurement Research**
 Vaibhav Bajpai, Steffie Jacob Eravuchira, Jürgen Schönwälder — _ACM SIGCOMM CCR_, 45(3), 2015.
 🔗 https://dl.acm.org/doi/10.1145/2805789.2805796
 _Anotação:_ descreve o RIPE Atlas — rede global de milhares de probes que executam ping, traceroute
 e DNS — e relata boas práticas e limitações ao conduzir experimentos com probes distribuídos. É a
-plataforma mais parecida com a que estou construindo, o que a torna comparação central do trabalho.
+plataforma mais próxima da proposta neste trabalho, o que a torna comparação central.
 
 **5. Quantifying Interference between Measurements on the RIPE Atlas Platform**
 (Holterbach et al. — conferir) — _ACM IMC 2015_.
 🔗 https://dl.acm.org/doi/10.1145/2815675.2815710
 _Anotação:_ mostra que medições concorrentes num mesmo conjunto de probes podem interferir umas nas
 outras e quantifica esse efeito. Sustenta a decisão de controlar a concorrência e serializar os
-testes intrusivos de vazão (iperf3) na minha plataforma.
+testes intrusivos de vazão (iperf3) na plataforma proposta.
 
 **6. Archipelago (Ark) — Infraestrutura de Medição Ativa (CAIDA)**
 CAIDA (kc claffy et al.) — infraestrutura em operação desde 2007.
 🔗 https://www.caida.org/projects/ark/ · https://www.caida.org/projects/ark/impact/
 _Anotação:_ infraestrutura de medição ativa que opera monitores distribuídos, muitos deles em
 Raspberry Pi, para coleta contínua de topologia e desempenho da Internet. O uso de Raspberry Pi
-como probe é o mesmo caminho da minha implementação.
+como probe é a mesma abordagem adotada na plataforma proposta.
 
 **7. M-Lab: User Initiated Internet Data for the Research Community**
 Phillipa Gill, Christophe Diot, Lai Yi Ohlsen, Matt Mathis, Stephen Soltesz — _ACM SIGCOMM CCR_, 52(1), 2022.
 🔗 https://dl.acm.org/doi/10.1145/3523230.3523236 · PDF: https://people.cs.umass.edu/~phillipa/papers/MLab_CCR.pdf
 _Anotação:_ apresenta uma plataforma aberta e distribuída de medição iniciada pelo usuário,
 detalhando a arquitetura de coleta, armazenamento e disponibilização pública dos dados. Visão
-recente (2022) que uso como comparação de arquitetura e de estratégia de consolidação de dados.
+recente (2022) usada como comparação de arquitetura e de estratégia de consolidação de dados.
 
 ## C. Redes móveis / celulares
 
@@ -82,7 +82,7 @@ aplica a redes celulares e quais métricas surgem nesse contexto.
 (Yeo, Youssef, Agrawala — conferir).
 🔗 http://web.cs.wpi.edu/~claypool/papers/tools/paper.pdf
 _Anotação:_ reúne ferramentas e técnicas para medir redes sem fio 802.11 e discute as métricas
-específicas desse ambiente. Amplia o trabalho para o contexto de redes sem fio, além da rede cabeada.
+específicas desse ambiente. Amplia o escopo para o contexto de redes sem fio, além da rede cabeada.
 
 ## E. Medição a partir de dentro da rede / banda larga
 
@@ -91,7 +91,8 @@ Srikanth Sundaresan, Walter de Donato, Nick Feamster, Renata Teixeira, Sam Crawf
 🔗 https://www.researchgate.net/publication/255960103_Measuring_Home_Broadband_Performance
 _Anotação:_ mede o desempenho de banda larga diretamente de dentro da rede, a partir de equipamentos
 instalados nos roteadores domésticos, em vez de depender de servidores externos. Reforça o argumento
-de medir internamente à infraestrutura — a mesma ideia dos meus probes espalhados pelo campus.
+de medir internamente à infraestrutura — a mesma ideia da plataforma proposta, com probes distribuídos
+pelo campus.
 
 ---
 
@@ -102,5 +103,5 @@ de medir internamente à infraestrutura — a mesma ideia dos meus probes espalh
 - No **Google Acadêmico**, confirmar a citação de cada título e usar o botão de PDF. Filtrar por
   **"desde 2020"** (recentes) ou ordenar por **número de citações** (mais citados).
 - Seguir as **referências** e o **"citado por"** de cada artigo para expandir a revisão.
-- Candidatos extras, se precisar passar de 10: _Portolan_ (medição móvel colaborativa), _SmokePing_,
+- Candidatos extras, para passar de 10: _Portolan_ (medição móvel colaborativa), _SmokePing_,
   e a versão original do M-Lab (Dovrolis et al., 2010).
