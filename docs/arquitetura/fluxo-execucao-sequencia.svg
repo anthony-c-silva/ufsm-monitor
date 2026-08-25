@@ -1,0 +1,66 @@
+<svg viewBox="0 0 1600 740" xmlns="http://www.w3.org/2000/svg" font-family="Helvetica, Arial, sans-serif">
+<rect x="0" y="0" width="1600" height="740" fill="white"/>
+<defs><marker id="arw" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L8,3 L0,6 Z" fill="#33475b"/></marker></defs>
+<text x="800" y="16" text-anchor="middle" font-size="15" font-weight="bold" fill="#12467b">Fluxo de execucao — de um plano ao dashboard (diagrama de sequencia)</text>
+<rect x="36" y="24" width="168" height="46" rx="8" fill="#08427b"/>
+<text x="120" y="43" text-anchor="middle" font-size="11.5" font-weight="bold" fill="white">Administrador</text>
+<text x="120" y="59" text-anchor="middle" font-size="9" fill="white">[Equipe de Redes]</text>
+<line x1="120" y1="70" x2="120" y2="700" stroke="#9db0c2" stroke-width="1.2" stroke-dasharray="4,4"/>
+<rect x="263" y="24" width="168" height="46" rx="8" fill="#1168bd"/>
+<text x="347" y="43" text-anchor="middle" font-size="11.5" font-weight="bold" fill="white">Controlador</text>
+<text x="347" y="59" text-anchor="middle" font-size="9" fill="white">+ Scheduler</text>
+<line x1="347" y1="70" x2="347" y2="700" stroke="#9db0c2" stroke-width="1.2" stroke-dasharray="4,4"/>
+<rect x="489" y="24" width="168" height="46" rx="8" fill="#1168bd"/>
+<text x="573" y="43" text-anchor="middle" font-size="11.5" font-weight="bold" fill="white">RabbitMQ</text>
+<text x="573" y="59" text-anchor="middle" font-size="9" fill="white">[Broker AMQP]</text>
+<line x1="573" y1="70" x2="573" y2="700" stroke="#9db0c2" stroke-width="1.2" stroke-dasharray="4,4"/>
+<rect x="716" y="24" width="168" height="46" rx="8" fill="#2f7d4f"/>
+<text x="800" y="43" text-anchor="middle" font-size="11.5" font-weight="bold" fill="white">Agente (probe)</text>
+<text x="800" y="59" text-anchor="middle" font-size="9" fill="white">[Go]</text>
+<line x1="800" y1="70" x2="800" y2="700" stroke="#9db0c2" stroke-width="1.2" stroke-dasharray="4,4"/>
+<rect x="943" y="24" width="168" height="46" rx="8" fill="#1168bd"/>
+<text x="1027" y="43" text-anchor="middle" font-size="11.5" font-weight="bold" fill="white">Servico de Ingestao</text>
+<text x="1027" y="59" text-anchor="middle" font-size="9" fill="white">[Python]</text>
+<line x1="1027" y1="70" x2="1027" y2="700" stroke="#9db0c2" stroke-width="1.2" stroke-dasharray="4,4"/>
+<rect x="1169" y="24" width="168" height="46" rx="8" fill="#0e5a9c"/>
+<text x="1253" y="43" text-anchor="middle" font-size="11.5" font-weight="bold" fill="white">PostgreSQL /</text>
+<text x="1253" y="59" text-anchor="middle" font-size="9" fill="white">TimescaleDB</text>
+<line x1="1253" y1="70" x2="1253" y2="700" stroke="#9db0c2" stroke-width="1.2" stroke-dasharray="4,4"/>
+<rect x="1396" y="24" width="168" height="46" rx="8" fill="#1168bd"/>
+<text x="1480" y="43" text-anchor="middle" font-size="11.5" font-weight="bold" fill="white">Grafana</text>
+<text x="1480" y="59" text-anchor="middle" font-size="9" fill="white">[Dashboards]</text>
+<line x1="1480" y1="70" x2="1480" y2="700" stroke="#9db0c2" stroke-width="1.2" stroke-dasharray="4,4"/>
+<rect x="307" y="180" width="1036" height="386" fill="none" stroke="#4fa06a" stroke-width="1.2" stroke-dasharray="3,3" rx="4"/>
+<path d="M307,180 h74 v16 h-64 z" fill="#e7f3ec" stroke="#4fa06a" stroke-width="1"/>
+<text x="315" y="192" font-size="9" font-weight="bold" fill="#176a30">loop</text>
+<text x="387" y="192" font-size="9" fill="#176a30">a cada period_seconds — o scheduler dispara automaticamente</text>
+<line x1="120" y1="112" x2="347" y2="112" stroke="#33475b" stroke-width="1.5" marker-end="url(#arw)"/>
+<text x="233" y="106" text-anchor="middle" font-size="10" fill="#22333f">1. cria o plano (POST /plans)  |  HTTPS</text>
+<path d="M347,153 h34 v14 h-34" fill="none" stroke="#33475b" stroke-width="1.5" marker-end="url(#arw)"/>
+<text x="389" y="158" font-size="10" fill="#22333f">2. valida e armazena o plano (PostgreSQL)</text>
+<path d="M347,200 h34 v14 h-34" fill="none" stroke="#33475b" stroke-width="1.5" marker-end="url(#arw)"/>
+<text x="389" y="205" font-size="10" fill="#22333f">3. Scheduler: expande a malha em tarefas (n(n-1))</text>
+<text x="389" y="219" font-size="8.5" font-style="italic" fill="#176a30">iperf3 -> serializado: 1 teste por probe de cada vez</text>
+<line x1="347" y1="253" x2="573" y2="253" stroke="#33475b" stroke-width="1.5" marker-end="url(#arw)"/>
+<text x="460" y="247" text-anchor="middle" font-size="10" fill="#22333f">4. publica tarefas  |  AMQP</text>
+<line x1="573" y1="300" x2="800" y2="300" stroke="#33475b" stroke-width="1.5" marker-end="url(#arw)"/>
+<text x="686" y="294" text-anchor="middle" font-size="10" fill="#22333f">5. entrega comando ao probe  |  AMQP</text>
+<path d="M800,341 h34 v14 h-34" fill="none" stroke="#33475b" stroke-width="1.5" marker-end="url(#arw)"/>
+<text x="842" y="346" font-size="10" fill="#22333f">6. executa a medicao (ICMP/DNS/HTTP/iperf3)</text>
+<text x="842" y="360" font-size="8.5" font-style="italic" fill="#176a30">contra outro probe ou destino externo</text>
+<path d="M800,388 h34 v14 h-34" fill="none" stroke="#33475b" stroke-width="1.5" marker-end="url(#arw)"/>
+<text x="842" y="393" font-size="10" fill="#22333f">7. grava na outbox SQLite</text>
+<text x="842" y="407" font-size="8.5" font-style="italic" fill="#176a30">persiste ANTES de publicar -> nada se perde</text>
+<line x1="800" y1="441" x2="573" y2="441" stroke="#33475b" stroke-width="1.5" marker-end="url(#arw)"/>
+<text x="686" y="435" text-anchor="middle" font-size="10" fill="#22333f">8. publica resultado (+ publisher confirm)  |  AMQP</text>
+<line x1="573" y1="488" x2="1027" y2="488" stroke="#33475b" stroke-width="1.5" marker-end="url(#arw)"/>
+<text x="800" y="482" text-anchor="middle" font-size="10" fill="#22333f">9. entrega resultado  |  AMQP</text>
+<line x1="1027" y1="535" x2="1253" y2="535" stroke="#33475b" stroke-width="1.5" marker-end="url(#arw)"/>
+<text x="1140" y="529" text-anchor="middle" font-size="10" fill="#22333f">10. grava serie temporal  |  SQL</text>
+<line x1="120" y1="600" x2="1480" y2="600" stroke="#33475b" stroke-width="1.5" marker-end="url(#arw)"/>
+<text x="800" y="594" text-anchor="middle" font-size="10" fill="#22333f">11. abre o dashboard  |  HTTPS</text>
+<line x1="1480" y1="647" x2="1253" y2="647" stroke="#33475b" stroke-width="1.5" marker-end="url(#arw)"/>
+<text x="1366" y="641" text-anchor="middle" font-size="10" fill="#22333f">12. consulta as series  |  SQL</text>
+<line x1="1480" y1="694" x2="120" y2="694" stroke="#33475b" stroke-width="1.5" stroke-dasharray="6,4" marker-end="url(#arw)"/>
+<text x="800" y="688" text-anchor="middle" font-size="10" fill="#22333f">13. graficos + matriz probe x destino</text>
+</svg>
