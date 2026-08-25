@@ -36,7 +36,7 @@ Andreas Hanemann et al. — _ICSOC 2005_ (Springer LNCS).
 _Anotação:_ propõe uma arquitetura orientada a serviços para monitoramento de redes entre múltiplos
 domínios, com pontos de medição distribuídos que trocam dados de desempenho de forma padronizada.
 É uma referência conceitual clássica de medição federada, próxima da separação controlador/probes
-adotada na plataforma proposta.
+
 
 **4. Lessons Learned From Using the RIPE Atlas Platform for Measurement Research**
 Vaibhav Bajpai, Steffie Jacob Eravuchira, Jürgen Schönwälder — _ACM SIGCOMM CCR_, 45(3), 2015.
