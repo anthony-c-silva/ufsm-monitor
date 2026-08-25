@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Fluxo de execução — UFSM Monitor (interativo)</title>
+<style>
+  :root{ --blue:#1168bd; --ink:#22333f; --muted:#5a6b7b; --hl:#e8590c; --line:#33475b; }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; height:100%; font-family:Helvetica,Arial,sans-serif; color:var(--ink); background:#eef2f6; }
+  header{ padding:10px 16px; background:#12467b; color:#fff; }
+  header h1{ font-size:16px; margin:0; font-weight:700; }
+  header p{ margin:3px 0 0; font-size:12px; opacity:.85; }
+  .app{ display:flex; flex-direction:column; height:100%; }
+  .toolbar{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; padding:8px 12px; background:#fff; border-bottom:1px solid #d7dee6; }
+  .toolbar button{ border:1px solid #c9d6e5; background:#f6f8fa; color:#22333f; padding:6px 10px; border-radius:6px; font-size:12.5px; cursor:pointer; }
+  .toolbar button:hover{ background:#e9eff5; }
+  .toolbar .sep{ width:1px; height:22px; background:#d7dee6; margin:0 4px; }
+  .toolbar .hint{ font-size:11.5px; color:var(--muted); margin-left:auto; }
+  .main{ flex:1; display:flex; min-height:0; }
+  .stage{ flex:1; position:relative; overflow:hidden; background:#fff; cursor:grab; }
+  .stage.grabbing{ cursor:grabbing; }
+  .stage svg{ width:100%; height:100%; display:block; user-select:none; }
+  .panel{ width:320px; background:#f8fafc; border-left:1px solid #d7dee6; padding:14px 16px; overflow:auto; }
+  .panel h2{ font-size:13px; margin:0 0 8px; color:#12467b; }
+  .panel .stepno{ display:inline-block; background:var(--hl); color:#fff; font-weight:700; border-radius:12px; padding:1px 9px; font-size:12px; }
+  .panel .route{ font-size:12px; color:var(--muted); margin:8px 0 6px; }
+  .panel .desc{ font-size:13px; line-height:1.45; }
+  .panel .note{ font-size:12px; color:#176a30; font-style:italic; margin-top:8px; }
+  .panel .empty{ color:var(--muted); font-size:12.5px; }
+  /* diagrama */
+  .lifeline{ stroke:#9db0c2; stroke-width:1.2; stroke-dasharray:4 4; }
+  .pbox{ cursor:pointer; }
+  .ptext1,.ptext2{ pointer-events:none; }
+  .message{ cursor:pointer; }
+  .marrow{ stroke:var(--line); stroke-width:1.6; fill:none; }
+  .mlabel{ fill:var(--ink); font-size:11px; pointer-events:none; }
+  .mnote{ fill:#176a30; font-size:9px; font-style:italic; pointer-events:none; }
+  .mhit{ fill:transparent; stroke:transparent; }
+  /* estados */
+  .message.dim,.participant.dim{ opacity:.12; }
+  .participant.sel .pbox{ stroke:var(--hl); stroke-width:3; }
+  .participant.sel .lifeline{ stroke:var(--hl); opacity:1; stroke-dasharray:none; }
+  .message.hl .marrow{ stroke:var(--hl); stroke-width:3; }
+  .message.hl .mlabel{ font-weight:700; fill:#a63f00; }
+  .arrowhead{ fill:context-stroke; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Fluxo de execução — de um plano ao dashboard</h1>
+    <p>Plataforma Distribuída de Monitoramento Ativo da Rede da UFSM · diagrama de sequência interativo</p>
+  </header>
+  <div class="toolbar">
+    <button id="prev">◀ Anterior</button>
+    <button id="next">Próximo ▶</button>
+    <button id="play">▶ Reproduzir</button>
+    <span class="sep"></span>
+    <button id="clear">Limpar destaque</button>
+    <span class="sep"></span>
+    <button id="zin">Zoom +</button>
+    <button id="zout">Zoom −</button>
+    <button id="zfit">Ajustar</button>
+    <span class="hint">Clique num <b>bloco</b> pra ver suas setas · clique numa <b>seta</b> pra detalhar · role o mouse pra dar zoom · arraste pra mover</span>
+  </div>
+  <div class="main">
+    <div class="stage" id="stage"><svg id="svg" xmlns="http://www.w3.org/2000/svg"></svg></div>
+    <aside class="panel" id="panel"><p class="empty">Passe pelos passos com ◀ ▶ ou clique nos elementos do diagrama. Cada etapa aparece aqui explicada.</p></aside>
+  </div>
+</div>
+
+<script>
+const PARTS = [
+  {id:'admin', l1:'Administrador',       l2:'[Equipe de Redes]', color:'#08427b'},
+  {id:'ctrl',  l1:'Controlador',         l2:'+ Scheduler',       color:'#1168bd'},
+  {id:'mq',    l1:'RabbitMQ',            l2:'[Broker AMQP]',     color:'#1168bd'},
+  {id:'agent', l1:'Agente (probe)',      l2:'[Go]',              color:'#2f7d4f'},
+  {id:'ing',   l1:'Serviço de Ingestão', l2:'[Python]',          color:'#1168bd'},
+  {id:'db',    l1:'PostgreSQL /',        l2:'TimescaleDB',       color:'#0e5a9c'},
+  {id:'graf',  l1:'Grafana',            l2:'[Dashboards]',       color:'#1168bd'},
+];
+const MSGS = [
+  {s:1, from:'admin', to:'ctrl', text:'cria o plano (POST /plans) · HTTPS',
+   desc:'O administrador envia o plano em JSON ao controlador pela API. O plano declara o quê medir, entre quem e com que frequência — é uma intenção, não comandos prontos.'},
+  {s:2, from:'ctrl', to:'ctrl', text:'valida e armazena o plano · PostgreSQL',
+   desc:'O controlador valida o plano (os probes existem? os destinos estão autorizados? o período é aceitável?) e o guarda no PostgreSQL como fonte de verdade.'},
+  {s:3, from:'ctrl', to:'ctrl', loop:true, text:'Scheduler: expande a malha em tarefas (n(n-1))',
+   note:'iperf3 → serializado: 1 teste por probe de cada vez',
+   desc:'Quando vence o período de um job, o scheduler dispara sozinho: expande os grupos em pares concretos (n(n-1)). Medições leves saem juntas; os testes de iperf3 vão para uma fila serializada (reserva origem e destino).'},
+  {s:4, from:'ctrl', to:'mq', loop:true, text:'publica tarefas · AMQP',
+   desc:'O controlador publica cada tarefa no RabbitMQ, endereçada à fila do probe de origem.'},
+  {s:5, from:'mq', to:'agent', loop:true, text:'entrega comando ao probe · AMQP',
+   desc:'O RabbitMQ entrega o comando para o agente do probe de origem.'},
+  {s:6, from:'agent', to:'agent', loop:true, text:'executa a medição (ICMP/DNS/HTTP/iperf3)',
+   note:'contra outro probe ou destino externo',
+   desc:'O agente executa a medição de verdade contra o alvo — que pode ser outro probe (malha/estrela) ou um destino externo.'},
+  {s:7, from:'agent', to:'agent', loop:true, text:'grava na outbox SQLite',
+   note:'persiste ANTES de publicar → nada se perde',
+   desc:'O agente grava o resultado primeiro na outbox SQLite local. Persistir antes de publicar é o que garante a tolerância a falha.'},
+  {s:8, from:'agent', to:'mq', loop:true, text:'publica resultado (+ publisher confirm) · AMQP',
+   desc:'O agente publica o resultado no RabbitMQ e só remove da outbox depois que o broker confirma (publisher confirm).'},
+  {s:9, from:'mq', to:'ing', loop:true, text:'entrega resultado · AMQP',
+   desc:'O RabbitMQ entrega o resultado ao serviço de ingestão.'},
+  {s:10, from:'ing', to:'db', loop:true, text:'grava série temporal · SQL',
+   desc:'A ingestão grava o resultado no PostgreSQL/TimescaleDB (hypertables, otimizadas para série temporal).'},
+  {s:11, from:'admin', to:'graf', text:'abre o dashboard · HTTPS',
+   desc:'O administrador abre o Grafana no navegador.'},
+  {s:12, from:'graf', to:'db', text:'consulta as séries · SQL',
+   desc:'O Grafana consulta as séries temporais no banco.'},
+  {s:13, from:'graf', to:'admin', ret:true, text:'gráficos + matriz probe × destino',
+   desc:'O Grafana desenha os gráficos e a matriz probe × destino, que o administrador visualiza. E o ciclo se repete a cada período — as amostras vão acumulando.'},
+];
+
+// ---- geometria ----
+const VW=1580, BOXY=20, BOXH=46, BOXW=168, TOP=BOXY+BOXH, LIFE_B=728, VH=760;
+const xs={}; PARTS.forEach((p,i)=> xs[p.id]=Math.round(110 + i*(1360/(PARTS.length-1))));
+const yStep={}; { let y=110; for(let s=1;s<=10;s++){ yStep[s]=y; y+=46; } y+=30; for(let s=11;s<=13;s++){ yStep[s]=y; y+=46; } }
+const loopTop=yStep[3]-22, loopBot=yStep[10]+18;
+
+function esc(t){ return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+let svgInner = '';
+svgInner += `<defs><marker id="ah" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path class="arrowhead" d="M0,0 L8,3 L0,6 Z"/></marker></defs>`;
+svgInner += `<g id="vp">`;
+// loop frame (fundo, não interativo)
+const lx1=xs['ctrl']-42, lx2=xs['db']+92;
+svgInner += `<g pointer-events="none">
+  <rect x="${lx1}" y="${loopTop}" width="${lx2-lx1}" height="${loopBot-loopTop}" rx="5" fill="#f2fbf5" stroke="#4fa06a" stroke-width="1.1" stroke-dasharray="3 3"/>
+  <path d="M${lx1},${loopTop} h78 v16 h-68 z" fill="#e2f2e8" stroke="#4fa06a" stroke-width="1"/>
+  <text x="${lx1+8}" y="${loopTop+12}" font-size="10" font-weight="700" fill="#176a30">loop</text>
+  <text x="${lx1+84}" y="${loopTop+12}" font-size="10" fill="#176a30">a cada period_seconds — o scheduler dispara sozinho</text>
+</g>`;
+// participantes + lifelines
+PARTS.forEach(p=>{ const x=xs[p.id];
+  svgInner += `<g class="participant" data-id="${p.id}">
+    <line class="lifeline" x1="${x}" y1="${TOP}" x2="${x}" y2="${LIFE_B}"/>
+    <rect class="pbox" x="${x-BOXW/2}" y="${BOXY}" width="${BOXW}" height="${BOXH}" rx="8" fill="${p.color}"/>
+    <text class="ptext1" x="${x}" y="${BOXY+20}" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">${esc(p.l1)}</text>
+    <text class="ptext2" x="${x}" y="${BOXY+36}" text-anchor="middle" font-size="9.5" fill="#fff">${esc(p.l2)}</text>
+  </g>`;
+});
+// mensagens
+MSGS.forEach(m=>{ const y=yStep[m.s]; const x1=xs[m.from], x2=xs[m.to];
+  let body='';
+  if(m.from===m.to){ // self
+    body += `<path class="marrow" d="M${x1},${y-6} h34 v14 h-34" marker-end="url(#ah)"/>`;
+    body += `<text class="mlabel" x="${x1+42}" y="${y-1}">${m.s}. ${esc(m.text)}</text>`;
+    if(m.note) body += `<text class="mnote" x="${x1+42}" y="${y+13}">${esc(m.note)}</text>`;
+    const w=Math.max(200, m.text.length*6.2+60);
+    body += `<rect class="mhit" x="${x1-6}" y="${y-16}" width="${w}" height="${m.note?32:20}"/>`;
+  } else {
+    const dash = m.ret ? ' stroke-dasharray="6 4"' : '';
+    body += `<line class="marrow" x1="${x1}" y1="${y}" x2="${x2}" y2="${y}"${dash} marker-end="url(#ah)"/>`;
+    body += `<text class="mlabel" x="${(x1+x2)/2}" y="${y-6}" text-anchor="middle">${m.s}. ${esc(m.text)}</text>`;
+    body += `<rect class="mhit" x="${Math.min(x1,x2)}" y="${y-20}" width="${Math.abs(x2-x1)}" height="26"/>`;
+  }
+  svgInner += `<g class="message" data-step="${m.s}" data-from="${m.from}" data-to="${m.to}">${body}</g>`;
+});
+svgInner += `</g>`;
+
+const svg = document.getElementById('svg');
+svg.setAttribute('viewBox', `0 0 ${VW} ${VH}`);
+svg.innerHTML = svgInner;
+const vp = document.getElementById('vp');
+
+// ---- destaque ----
+const msgEls = [...document.querySelectorAll('.message')];
+const partEls = [...document.querySelectorAll('.participant')];
+const panel = document.getElementById('panel');
+let current = 0; // 0 = nada
+
+function clearHi(){
+  msgEls.forEach(e=>e.classList.remove('dim','hl'));
+  partEls.forEach(e=>e.classList.remove('dim','sel'));
+}
+function showPanel(html){ panel.innerHTML = html; }
+
+function highlightParticipant(id){
+  current = 0;
+  const p = PARTS.find(x=>x.id===id);
+  msgEls.forEach(e=>{ const on = e.dataset.from===id || e.dataset.to===id;
+    e.classList.toggle('hl', on); e.classList.toggle('dim', !on); });
+  partEls.forEach(e=>{ const sel = e.dataset.id===id;
+    e.classList.toggle('sel', sel); e.classList.toggle('dim', !sel && ![...msgEls].some(m=>!m.classList.contains('dim') && (m.dataset.from===e.dataset.id||m.dataset.to===e.dataset.id))); });
+  const rel = MSGS.filter(m=>m.from===id||m.to===id).map(m=>`<li>${m.s}. ${esc(m.text)}</li>`).join('');
+  showPanel(`<h2>${esc(p.l1)} ${esc(p.l2)}</h2><div class="route">Setas que passam por este bloco:</div><ul style="margin:0;padding-left:18px;font-size:12.5px;line-height:1.5">${rel}</ul>`);
+}
+function goToStep(n){
+  if(n<1) n=MSGS.length; if(n>MSGS.length) n=1; current=n;
+  const m = MSGS[n-1];
+  msgEls.forEach(e=>{ const on = +e.dataset.step===n; e.classList.toggle('hl',on); e.classList.toggle('dim',!on); });
+  partEls.forEach(e=>{ const on = e.dataset.id===m.from||e.dataset.id===m.to; e.classList.toggle('sel',on); e.classList.toggle('dim',!on); });
+  const fromP=PARTS.find(p=>p.id===m.from), toP=PARTS.find(p=>p.id===m.to);
+  const route = m.from===m.to ? `${esc(fromP.l1)} (ação interna)` : `${esc(fromP.l1)} → ${esc(toP.l1)}`;
+  showPanel(`<div class="stepno">Passo ${m.s} de ${MSGS.length}</div>
+    <div class="route">${route}</div>
+    <div class="desc">${esc(m.desc)}</div>
+    ${m.note?`<div class="note">↳ ${esc(m.note)}</div>`:''}`);
+}
+
+msgEls.forEach(e=> e.addEventListener('click', ev=>{ ev.stopPropagation(); goToStep(+e.dataset.step); }));
+partEls.forEach(e=> e.querySelector('.pbox').addEventListener('click', ev=>{ ev.stopPropagation(); highlightParticipant(e.dataset.id); }));
+
+document.getElementById('next').onclick=()=>goToStep(current+1||1);
+document.getElementById('prev').onclick=()=>goToStep((current||1)-1);
+document.getElementById('clear').onclick=()=>{ clearHi(); current=0; showPanel('<p class="empty">Destaque limpo. Use ◀ ▶ ou clique nos elementos.</p>'); };
+let playing=null;
+document.getElementById('play').onclick=(e)=>{
+  if(playing){ clearInterval(playing); playing=null; e.target.textContent='▶ Reproduzir'; return; }
+  e.target.textContent='⏸ Pausar'; if(!current) goToStep(1);
+  playing=setInterval(()=>{ if(current>=MSGS.length){ clearInterval(playing); playing=null; document.getElementById('play').textContent='▶ Reproduzir'; return;} goToStep(current+1); }, 2600);
+};
+
+// ---- zoom / pan ----
+const stage=document.getElementById('stage');
+let vt={s:1,x:0,y:0};
+function apply(){ vp.setAttribute('transform', `translate(${vt.x},${vt.y}) scale(${vt.s})`); }
+function svgPoint(cx,cy){ const pt=svg.createSVGPoint(); pt.x=cx; pt.y=cy; return pt.matrixTransform(svg.getScreenCTM().inverse()); }
+function zoomAt(cx,cy,factor){ const p=svgPoint(cx,cy); const ns=Math.min(6,Math.max(0.4,vt.s*factor));
+  vt.x = p.x - (p.x-vt.x)*(ns/vt.s); vt.y = p.y - (p.y-vt.y)*(ns/vt.s); vt.s=ns; apply(); }
+stage.addEventListener('wheel', ev=>{ ev.preventDefault(); zoomAt(ev.clientX,ev.clientY, ev.deltaY<0?1.12:1/1.12); }, {passive:false});
+document.getElementById('zin').onclick=()=>{ const r=stage.getBoundingClientRect(); zoomAt(r.left+r.width/2,r.top+r.height/2,1.2); };
+document.getElementById('zout').onclick=()=>{ const r=stage.getBoundingClientRect(); zoomAt(r.left+r.width/2,r.top+r.height/2,1/1.2); };
+document.getElementById('zfit').onclick=()=>{ vt={s:1,x:0,y:0}; apply(); };
+let drag=null;
+stage.addEventListener('mousedown', ev=>{ if(ev.button!==0) return; drag=svgPoint(ev.clientX,ev.clientY); stage.classList.add('grabbing'); });
+window.addEventListener('mousemove', ev=>{ if(!drag) return; const p=svgPoint(ev.clientX,ev.clientY); vt.x += (p.x-drag.x); vt.y += (p.y-drag.y); drag=p; apply(); });
+window.addEventListener('mouseup', ()=>{ drag=null; stage.classList.remove('grabbing'); });
+stage.addEventListener('click', ev=>{ if(ev.target.id==='svg'||ev.target.tagName==='svg'){ clearHi(); current=0; } });
+
+// teclado
+window.addEventListener('keydown', ev=>{
+  if(ev.key==='ArrowRight') goToStep(current+1||1);
+  else if(ev.key==='ArrowLeft') goToStep((current||1)-1);
+  else if(ev.key==='Escape'){ clearHi(); current=0; }
+  else if(ev.key==='+'||ev.key==='=') document.getElementById('zin').click();
+  else if(ev.key==='-') document.getElementById('zout').click();
+});
+apply();
+</script>
+</body>
+</html>
