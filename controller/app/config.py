@@ -20,3 +20,11 @@ MAX_TASKS_PER_CYCLE = int(os.getenv("MAX_TASKS_PER_CYCLE", "500"))
 
 # Janela de validade de uma tarefa publicada (segundos). Tarefa vencida não roda.
 TASK_TTL_SECONDS = int(os.getenv("TASK_TTL_SECONDS", "90"))
+
+# Scheduler automático (Fase 6). "off" desativa (aí só roda via POST /plans/{id}/run).
+SCHEDULER_ENABLED = os.getenv("SCHEDULER", "on") != "off"
+SCHEDULER_TICK_SECONDS = int(os.getenv("SCHEDULER_TICK_SECONDS", "5"))
+# Jitter aplicado ao período de cada job (fração), para evitar sincronização rígida.
+JOB_JITTER_PCT = float(os.getenv("JOB_JITTER_PCT", "0.15"))
+# Folga entre ondas de iperf3 (segundos) somada à duração do teste.
+IPERF3_SLACK_SECONDS = int(os.getenv("IPERF3_SLACK_SECONDS", "5"))

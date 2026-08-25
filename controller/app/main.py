@@ -10,7 +10,8 @@ from datetime import datetime, timezone
 from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy.orm import Session
 
-from . import models, planning, publisher
+from . import models, planning, publisher, scheduler
+from .config import SCHEDULER_ENABLED
 from .db import Base, engine, get_db
 from .schemas import GroupIn, Plan, ProbeIn, TargetIn
 
@@ -19,6 +20,8 @@ from .schemas import GroupIn, Plan, ProbeIn, TargetIn
 async def lifespan(_app: FastAPI):
     # Cria as tabelas no startup (Fase 4; migrações com Alembic virão depois).
     Base.metadata.create_all(bind=engine)
+    if SCHEDULER_ENABLED:
+        scheduler.start()  # Fase 6: roda os planos habilitados por period_seconds
     yield
 
 
@@ -28,6 +31,11 @@ app = FastAPI(title="UFSM Monitor Controller", version="0.1.0", lifespan=lifespa
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/scheduler/status")
+def scheduler_status():
+    return {"enabled": SCHEDULER_ENABLED, "last_runs": scheduler.status()}
 
 
 # --------------------------------------------------------------------------

@@ -72,6 +72,16 @@ Depois do passo 5, o **agente** consome os comandos, executa (icmp/http/dns) e o
 > O grupo `campus` está definido dentro do próprio plano (`groups`). Também dá para
 > cadastrar grupos reutilizáveis via `POST /groups`.
 
+## Scheduler automático (Fase 6)
+
+Com `SCHEDULER=on` (padrão), o controlador **roda sozinho** os planos com `enabled: true`,
+respeitando o `period_seconds` de cada job (com jitter para evitar sincronização rígida) —
+não precisa chamar `POST /plans/{id}/run` na mão. Os testes de **iperf3 são serializados**:
+um probe nunca participa de dois testes de vazão ao mesmo tempo (origem ou destino, spec 11).
+
+- Ver o que já rodou: `GET /scheduler/status`.
+- Desativar: `SCHEDULER=off` (aí só roda via `/run`), ou marque o plano com `enabled: false`.
+
 ## Observações
 
 - **Allowlist:** destinos externos precisam estar em `/targets` (spec 12) — senão a

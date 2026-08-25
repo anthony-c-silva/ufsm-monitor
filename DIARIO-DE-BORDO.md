@@ -278,3 +278,13 @@ dos externos (1.1.1.1 ~14 ms). Medição mútua comprovada de ponta a ponta.
 selecionar 10 artigos; demonstrar rodando; corrigir a narrativa do fluxo de dados
 (tolerância a falha = outbox SQLite no agente; TimescaleDB = armazenamento final, não
 "backup intermediário").
+
+**Fase 6 fechada — scheduler + serialização de iperf3 (`controller/app/scheduler.py`):**
+- Scheduler automático: thread no controlador roda os planos `enabled` por
+  `period_seconds` com jitter (sem `/run` manual). `GET /scheduler/status`.
+- `Iperf3Serializer`: reserva origem+destino; um probe nunca faz dois testes de vazão ao
+  mesmo tempo (spec 11). Não-iperf3 publicam na hora; iperf3 numa fila serializada.
+- **DP-13 — Scheduler no processo do controlador** (thread, 1 worker uvicorn).
+- **Validado ✔** Após `docker compose up` + seed, a matriz do Grafana acumulou 4 amostras
+  por par (probe↔probe e externos) **sem acionamento manual** — plataforma coletando
+  sozinha. "Resultado mínimo esperado" da proposta atingido.
