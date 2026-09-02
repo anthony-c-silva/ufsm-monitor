@@ -92,6 +92,16 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # Dashboard web (React/Vite + Nginx) — substitui o Grafana e dá controle ao usuário.
+  web:
+    build: ./web
+    container_name: ufsm-web
+    ports:
+      - "8080:80"       # Dashboard (http://localhost:8080)
+    depends_on:
+      - controller
+    restart: unless-stopped
+
   # ---------------- Probes (agentes) — para demo local da malha ----------------
   # Em produção estes seriam os Raspberry Pi físicos (binário + systemd).
   agent-a:

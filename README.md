@@ -32,8 +32,11 @@ avaliação experimental em escala e escrita do TCC.
 - **Scheduler automático:** os planos habilitados são executados periodicamente (`period_seconds`, com
   _jitter_), sem acionamento manual. Os testes de **iperf3 são serializados** (reserva de origem e
   destino), evitando que um probe participe de dois testes de vazão simultâneos.
-- **Consolidação e visualização:** ingestão em **PostgreSQL/TimescaleDB** (hypertables) e dashboards em
-  **Grafana**, incluindo a **matriz probe × destino**.
+- **Consolidação e visualização:** ingestão em **PostgreSQL/TimescaleDB** (hypertables), com painéis em
+  **Grafana** (legado) e um **dashboard web próprio**.
+- **Dashboard próprio (web):** front-end React/Vite que **substitui o Grafana** — cadastro de
+  probes/destinos/grupos, **construtor visual de planos** (quais probes medem o quê, tipo, período,
+  malha/estrela), **séries temporais** e **matriz probe × destino**, consumindo a API do controlador.
 - **Empacotamento:** toda a plataforma sobe em contêineres; o agente é um binário Go **cross-compilável
   para ARM** (Raspberry Pi), instalável como serviço `systemd`.
 
@@ -73,7 +76,8 @@ contêineres e componentes) e no diagrama de sequência interativo do fluxo de e
 | `prototypes/`       | Protótipos de medição em Go (stdlib), um por tipo — validação isolada das medições (Fase 1)                |
 | `agent/`            | Agente `ufsm-monitor-agent` (Go): executor, outbox SQLite, servidores iperf3/DNS, `/health`, `systemd`      |
 | `controller/`       | Controlador (Python/FastAPI): inventário, planos, validação/expansão, publicação, **scheduler** e ingestão |
-| `infra/`            | Provisionamento do Grafana (datasource TimescaleDB + dashboards)                                            |
+| `infra/`            | Provisionamento do Grafana (datasource TimescaleDB + dashboards) — legado                                  |
+| `web/`              | **Dashboard web** (React/Vite + Nginx): inventário, construtor de planos, séries e matriz — substitui o Grafana |
 | `scripts/`          | Utilitários (validador de resultados, `demo-seed.sh`)                                                       |
 | `docs/`             | Arquitetura (C4 + sequência), cronograma, relatório de progresso e revisão bibliográfica                   |
 | `docker-compose.yml`| Stack completa para execução/demonstração em contêineres                                                    |
@@ -105,9 +109,10 @@ bash scripts/demo-seed.sh
 
 Endpoints:
 
+- **Dashboard (web):** http://localhost:8080 — inventário, planos, séries e matriz (**substitui o Grafana**)
 - **Controlador / API (Swagger):** http://localhost:8000/docs
 - **RabbitMQ (Management):** http://localhost:15672 (guest/guest)
-- **Grafana:** http://localhost:3000 (admin/admin) → dashboard "UFSM Monitor — Visão Geral"
+- **Grafana (legado):** http://localhost:3000 (admin/admin) → dashboard "UFSM Monitor — Visão Geral"
 - **Serviços oferecidos por cada probe:** http://localhost:8081/services e http://localhost:8082/services
 
 O plano `controller/examples/plan-mesh.json` exercita a **malha**: `agent-a` e `agent-b` medem um ao

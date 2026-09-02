@@ -13,6 +13,9 @@ DATABASE_URL = os.getenv(
 )
 AMQP_URL = os.getenv("AMQP_URL", "amqp://guest:guest@localhost:5672/")
 
+# Origens permitidas para o front-end (CORS). "*" libera todas (padrão em dev).
+FRONTEND_ORIGINS = os.getenv("FRONTEND_ORIGINS", "*")
+
 # Limites de validação de planos (spec 7).
 MIN_PERIOD_SECONDS = int(os.getenv("MIN_PERIOD_SECONDS", "10"))
 MAX_IPERF_DURATION = int(os.getenv("MAX_IPERF_DURATION", "30"))
