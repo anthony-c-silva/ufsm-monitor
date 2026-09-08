@@ -106,6 +106,7 @@ services:
   # Em produção estes seriam os Raspberry Pi físicos (binário + systemd).
   agent-a:
     build: ./agent
+    profiles: ["demo"]      # só sobe com: docker compose --profile demo up
     container_name: ufsm-agent-a
     hostname: agent-a
     ports:
@@ -127,6 +128,7 @@ services:
 
   agent-b:
     build: ./agent
+    profiles: ["demo"]      # só sobe com: docker compose --profile demo up
     container_name: ufsm-agent-b
     hostname: agent-b
     ports:

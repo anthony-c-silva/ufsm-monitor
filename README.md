@@ -97,8 +97,13 @@ demonstração). Pré-requisito: **Docker Desktop** (com integração WSL, no Wi
 
 ```bash
 # na raiz do repositório
-docker compose up -d --build     # a primeira execução compila o Go e instala as dependências Python
+
+# Demonstração local (inclui dois agentes de exemplo, via profile "demo"):
+docker compose --profile demo up -d --build
 docker compose ps                # confirma que os serviços subiram
+
+# Servidor de produção (apenas o núcleo, sem os agentes de exemplo):
+# docker compose up -d --build   # os probes reais são os Raspberry Pi (ver docs/DEPLOY-FISICO.md)
 ```
 
 Em seguida, o script de _seed_ registra os probes, autoriza os destinos, cria e roda o plano de malha:
@@ -143,6 +148,9 @@ O monorepo se justifica porque os **contratos JSON Schema** (`contracts/`) são 
 agente e controlador: fonte única, alterações de formato atômicas em um só commit e menor esforço de
 manutenção. A separação em múltiplos repositórios só se justificaria com equipes grandes e ciclos de
 release independentes.
+
+> **Passo a passo do deploy físico** (servidor central + Raspberry Pi como probe):
+> [`docs/DEPLOY-FISICO.md`](docs/DEPLOY-FISICO.md).
 
 ## Documentação
 
