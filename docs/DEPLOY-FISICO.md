@@ -72,6 +72,10 @@ sudo ufw allow 8000/tcp    # API (opcional)
 
 ---
 
+> **Atualizar o servidor quando o código mudar:** configure o auto-deploy (o servidor puxa do
+> GitHub e reconstrói a stack a cada ~2 min) seguindo [`deploy/README.md`](../deploy/README.md).
+> Assim, um `git push` no seu PC atualiza o servidor sozinho, sem abrir portas.
+
 ## Parte 2 — Compilar o agente para o Pi (arm64)
 
 O Pi 4B é **arm64**. O binário é **estático** (`CGO_ENABLED=0`), então não depende de bibliotecas.

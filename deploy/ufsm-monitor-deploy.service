@@ -1,0 +1,15 @@
+[Unit]
+Description=UFSM Monitor — auto-deploy (git pull + docker compose)
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+# AJUSTE: o usuário abaixo precisa existir, ser dono de /opt/ufsm-monitor e
+# estar no grupo 'docker'. Ajuste também os caminhos/branch se necessário.
+User=ufsm
+WorkingDirectory=/opt/ufsm-monitor
+Environment=REPO_DIR=/opt/ufsm-monitor
+Environment=DEPLOY_BRANCH=main
+ExecStart=/usr/bin/env bash /opt/ufsm-monitor/deploy/deploy.sh

@@ -150,7 +150,8 @@ manutenção. A separação em múltiplos repositórios só se justificaria com 
 release independentes.
 
 > **Passo a passo do deploy físico** (servidor central + Raspberry Pi como probe):
-> [`docs/DEPLOY-FISICO.md`](docs/DEPLOY-FISICO.md).
+> [`docs/DEPLOY-FISICO.md`](docs/DEPLOY-FISICO.md). Para o servidor se atualizar sozinho a cada
+> `git push` (pull + rebuild, sem abrir portas), veja [`deploy/README.md`](deploy/README.md).
 
 ## Documentação
 

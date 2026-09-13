@@ -1,0 +1,11 @@
+[Unit]
+Description=Executa o auto-deploy do UFSM Monitor periodicamente
+
+[Timer]
+# Primeira execução 2 min após o boot, depois a cada 2 min.
+OnBootSec=2min
+OnUnitActiveSec=2min
+Unit=ufsm-monitor-deploy.service
+
+[Install]
+WantedBy=timers.target
