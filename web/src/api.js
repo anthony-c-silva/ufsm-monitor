@@ -1,13 +1,25 @@
-// Cliente da API do controlador (FastAPI).
-// Base: "/api" (proxy do Vite em dev; proxy do Nginx em produção).
-// Pode ser sobrescrito com VITE_API_BASE.
+// Cliente da API do controlador (FastAPI), com token e refresh automático.
+import { getAccessToken, refreshSession } from "./auth.js";
+
 const BASE = import.meta.env.VITE_API_BASE || "/api";
 
-async function req(path, opts = {}) {
-  const res = await fetch(BASE + path, {
-    headers: { "Content-Type": "application/json" },
-    ...opts,
-  });
+async function req(path, opts = {}, _retried = false) {
+  const headers = { "Content-Type": "application/json", ...(opts.headers || {}) };
+  const token = getAccessToken();
+  if (token) headers["Authorization"] = "Bearer " + token;
+
+  const res = await fetch(BASE + path, { ...opts, headers });
+
+  // Access expirado -> tenta renovar uma vez e repete.
+  if (res.status === 401 && !_retried) {
+    const ok = await refreshSession();
+    if (ok) return req(path, opts, true);
+    window.dispatchEvent(new CustomEvent("ufsm:unauthorized"));
+    const err = new Error("sessão expirada");
+    err.status = 401;
+    throw err;
+  }
+
   if (!res.ok) {
     let detail;
     try {
@@ -15,6 +27,7 @@ async function req(path, opts = {}) {
     } catch {
       detail = await res.text();
     }
+    if (res.status === 403) window.dispatchEvent(new CustomEvent("ufsm:forbidden"));
     const msg =
       detail && detail.detail
         ? typeof detail.detail === "string"
@@ -35,6 +48,13 @@ async function req(path, opts = {}) {
 const qs = (o) => "?" + new URLSearchParams(o).toString();
 
 export const api = {
+  // sessão / usuários
+  me: () => req("/auth/me"),
+  changePassword: (b) => req("/auth/change-password", { method: "POST", body: JSON.stringify(b) }),
+  users: () => req("/users"),
+  createUser: (b) => req("/users", { method: "POST", body: JSON.stringify(b) }),
+  delUser: (id) => req("/users/" + id, { method: "DELETE" }),
+
   // visão geral / status
   overview: () => req("/stats/overview"),
   recent: (limit = 50) => req("/measurements/recent" + qs({ limit })),
@@ -65,4 +85,5 @@ export const api = {
   fields: () => req("/measurements/fields"),
   series: (q) => req("/measurements/series" + qs(q)),
   matrix: (type, hours = 24) => req("/measurements/matrix" + qs({ type, hours })),
+  traceroute: (q = {}) => req("/measurements/traceroute" + qs(q)),
 };

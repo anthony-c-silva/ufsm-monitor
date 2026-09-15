@@ -11,10 +11,19 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
-from . import analytics, ingestion, models, planning, publisher, scheduler
+from . import analytics, auth, ingestion, models, planning, publisher, scheduler
 from .config import FRONTEND_ORIGINS, SCHEDULER_ENABLED
-from .db import Base, engine, get_db
-from .schemas import GroupIn, Plan, ProbeIn, TargetIn
+from .db import Base, SessionLocal, engine, get_db
+from .schemas import (
+    GroupIn,
+    LoginIn,
+    PasswordChangeIn,
+    Plan,
+    ProbeIn,
+    RefreshIn,
+    TargetIn,
+    UserIn,
+)
 
 
 @asynccontextmanager
@@ -27,12 +36,20 @@ async def lifespan(_app: FastAPI):
         ingestion.ensure_schema()
     except Exception as exc:  # noqa: BLE001
         print("aviso: schema de medições ainda indisponível:", exc)
+    # Cria o admin inicial (admin/admin, troca obrigatória) se não houver usuários.
+    with SessionLocal() as db:
+        auth.seed_admin(db)
     if SCHEDULER_ENABLED:
         scheduler.start()  # Fase 6: roda os planos habilitados por period_seconds
     yield
 
 
-app = FastAPI(title="UFSM Monitor Controller", version="0.1.0", lifespan=lifespan)
+app = FastAPI(
+    title="UFSM Monitor Controller",
+    version="0.1.0",
+    lifespan=lifespan,
+    dependencies=[Depends(auth.guard)],  # todas as rotas exigem login (exceto as públicas)
+)
 
 # CORS para o front-end (dashboard). Em produção, restrinja via FRONTEND_ORIGINS.
 _origins = ["*"] if FRONTEND_ORIGINS.strip() == "*" else [o.strip() for o in FRONTEND_ORIGINS.split(",")]
@@ -47,6 +64,125 @@ app.add_middleware(
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+# --------------------------------------------------------------------------
+# Autenticação
+# --------------------------------------------------------------------------
+@app.post("/auth/login")
+def login(body: LoginIn, db: Session = Depends(get_db)):
+    auth.check_login_allowed(body.username)
+    user = db.query(models.User).filter(models.User.username == body.username).first()
+    if user is None or not user.active or not auth.verify_password(body.password, user.password_hash):
+        auth.register_login_failure(body.username)
+        raise HTTPException(status_code=401, detail="usuário ou senha inválidos")
+    auth.reset_login_attempts(body.username)
+    return {
+        "access_token": auth.create_access_token(user),
+        "refresh_token": auth.issue_refresh_token(db, user),
+        "token_type": "bearer",
+        "username": user.username,
+        "must_change_password": user.must_change_password,
+    }
+
+
+@app.post("/auth/refresh")
+def refresh_token(body: RefreshIn, db: Session = Depends(get_db)):
+    user, new_refresh = auth.rotate_refresh_token(db, body.refresh_token)
+    return {
+        "access_token": auth.create_access_token(user),
+        "refresh_token": new_refresh,
+        "token_type": "bearer",
+        "username": user.username,
+        "must_change_password": user.must_change_password,
+    }
+
+
+@app.post("/auth/logout")
+def logout(body: RefreshIn, db: Session = Depends(get_db)):
+    auth.revoke_refresh_token(db, body.refresh_token)
+    return {"ok": True}
+
+
+@app.get("/auth/me")
+def me(current: models.User = Depends(auth.get_current_user)):
+    return _user_dict(current)
+
+
+@app.post("/auth/change-password")
+def change_password(
+    body: PasswordChangeIn,
+    current: models.User = Depends(auth.get_current_user),
+    db: Session = Depends(get_db),
+):
+    if not auth.verify_password(body.current_password, current.password_hash):
+        raise HTTPException(status_code=400, detail="senha atual incorreta")
+    if len(body.new_password) < auth.MIN_PASSWORD_LEN:
+        raise HTTPException(
+            status_code=400,
+            detail=f"a nova senha deve ter ao menos {auth.MIN_PASSWORD_LEN} caracteres",
+        )
+    current.password_hash = auth.hash_password(body.new_password)
+    current.must_change_password = False
+    db.commit()
+    auth.revoke_all_for_user(db, current.id)  # encerra as sessões antigas
+    # Emite uma sessão nova para o próprio cliente que trocou a senha.
+    return {
+        "ok": True,
+        "access_token": auth.create_access_token(current),
+        "refresh_token": auth.issue_refresh_token(db, current),
+        "token_type": "bearer",
+        "username": current.username,
+        "must_change_password": False,
+    }
+
+
+# --------------------------------------------------------------------------
+# Usuários (gestão — papel único ADMIN)
+# --------------------------------------------------------------------------
+@app.get("/users")
+def list_users(db: Session = Depends(get_db)):
+    return [_user_dict(u) for u in db.query(models.User).all()]
+
+
+@app.post("/users")
+def create_user(body: UserIn, db: Session = Depends(get_db)):
+    if db.query(models.User).filter(models.User.username == body.username).first():
+        raise HTTPException(status_code=409, detail="nome de usuário já existe")
+    if len(body.password) < auth.MIN_PASSWORD_LEN:
+        raise HTTPException(
+            status_code=400,
+            detail=f"a senha deve ter ao menos {auth.MIN_PASSWORD_LEN} caracteres",
+        )
+    u = models.User(
+        username=body.username,
+        password_hash=auth.hash_password(body.password),
+        role="admin",
+        must_change_password=True,
+        active=True,
+    )
+    db.add(u)
+    db.commit()
+    return _user_dict(u)
+
+
+@app.delete("/users/{user_id}")
+def delete_user(
+    user_id: int,
+    current: models.User = Depends(auth.get_current_user),
+    db: Session = Depends(get_db),
+):
+    u = db.get(models.User, user_id)
+    if u is None:
+        raise HTTPException(status_code=404, detail="usuário não encontrado")
+    if u.id == current.id:
+        raise HTTPException(status_code=400, detail="não é possível remover o próprio usuário")
+    if db.query(models.User).count() <= 1:
+        raise HTTPException(status_code=400, detail="não é possível remover o último usuário")
+    auth.revoke_all_for_user(db, u.id)
+    db.delete(u)
+    db.commit()
+    return {"deleted": user_id}
 
 
 @app.get("/scheduler/status")
@@ -306,6 +442,11 @@ def measurements_matrix(type: str = "icmp", hours: int = 24):
     return analytics.matrix(type, hours)
 
 
+@app.get("/measurements/traceroute")
+def measurements_traceroute(probe_id: str = "", target: str = "", limit: int = 20):
+    return analytics.traceroute_recent(probe_id or None, target or None, limit)
+
+
 @app.get("/probes/status")
 def probes_status(minutes: int = 30, db: Session = Depends(get_db)):
     activity = {a["probe_id"]: a for a in analytics.probe_activity(minutes)}
@@ -341,3 +482,13 @@ def _probe_dict(p: models.Probe) -> dict:
 
 def _target_dict(t: models.Target) -> dict:
     return {"id": t.id, "name": t.name, "kind": t.kind, "address": t.address}
+
+
+def _user_dict(u: models.User) -> dict:
+    return {
+        "id": u.id,
+        "username": u.username,
+        "role": u.role,
+        "active": u.active,
+        "must_change_password": u.must_change_password,
+    }

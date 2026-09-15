@@ -109,16 +109,19 @@ export default function Series({ notify, refreshKey }) {
             <div style={{ width: "100%", height: 380 }}>
               <ResponsiveContainer>
                 <LineChart data={data} margin={{ top: 8, right: 20, bottom: 8, left: 4 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#eef1f6" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#26313f" />
                   <XAxis
                     dataKey="t"
                     tickFormatter={(t) => new Date(t).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                    minTickGap={40} tick={{ fontSize: 11 }}
+                    minTickGap={40} tick={{ fontSize: 11, fill: "#93a2b6" }} stroke="#26313f"
                   />
-                  <YAxis tick={{ fontSize: 11 }} width={64} />
+                  <YAxis tick={{ fontSize: 11, fill: "#93a2b6" }} stroke="#26313f" width={64} />
                   <Tooltip
                     labelFormatter={(t) => new Date(t).toLocaleString("pt-BR")}
                     formatter={(v) => fmtValue(type, field, v)}
+                    contentStyle={{ background: "#161d28", border: "1px solid #26313f", borderRadius: 8, color: "#e7edf5" }}
+                    labelStyle={{ color: "#93a2b6" }}
+                    itemStyle={{ color: "#e7edf5" }}
                   />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                   {keys.map((k, i) => (

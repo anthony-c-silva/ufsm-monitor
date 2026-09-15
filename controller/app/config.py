@@ -16,6 +16,13 @@ AMQP_URL = os.getenv("AMQP_URL", "amqp://guest:guest@localhost:5672/")
 # Origens permitidas para o front-end (CORS). "*" libera todas (padrão em dev).
 FRONTEND_ORIGINS = os.getenv("FRONTEND_ORIGINS", "*")
 
+# Autenticação. SECRET_KEY vazio => gerado e persistido no banco automaticamente.
+SECRET_KEY = os.getenv("SECRET_KEY", "")
+ACCESS_TOKEN_TTL_MIN = int(os.getenv("ACCESS_TOKEN_TTL_MIN", "30"))
+REFRESH_TOKEN_TTL_DAYS = int(os.getenv("REFRESH_TOKEN_TTL_DAYS", "14"))
+LOGIN_MAX_ATTEMPTS = int(os.getenv("LOGIN_MAX_ATTEMPTS", "5"))
+LOGIN_LOCKOUT_MIN = int(os.getenv("LOGIN_LOCKOUT_MIN", "15"))
+
 # Limites de validação de planos (spec 7).
 MIN_PERIOD_SECONDS = int(os.getenv("MIN_PERIOD_SECONDS", "10"))
 MAX_IPERF_DURATION = int(os.getenv("MAX_IPERF_DURATION", "30"))

@@ -187,6 +187,18 @@ privilegiada já está no arquivo `.service`.
 
 ---
 
+## Segurança (importante — rede da UFSM)
+
+- **Primeiro acesso ao dashboard:** usuário **admin**, senha **admin** — a **troca de senha é
+  obrigatória** no primeiro login. Defina uma senha forte antes de qualquer coisa.
+- **Todas as rotas da API exigem login** (token JWT + refresh rotativo, com revogação); senhas com
+  hash bcrypt; rate-limit contra força bruta.
+- **Segredo do JWT:** gerado e persistido automaticamente. Para fixá-lo por ambiente, defina
+  `SECRET_KEY` no serviço `controller` do `docker-compose.yml`.
+- **HTTPS (recomendado):** como trafega senhas/tokens, o ideal é servir o dashboard atrás de **TLS**
+  (terminar no Nginx do serviço `web` — certificado autoassinado para a rede interna, ou Let's Encrypt
+  se houver domínio).
+
 ## Troubleshooting
 
 | Sintoma | Causa provável / solução |

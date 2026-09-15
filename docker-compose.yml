@@ -45,23 +45,6 @@ services:
       retries: 5
     restart: unless-stopped
 
-  grafana:
-    image: grafana/grafana:latest
-    container_name: ufsm-grafana
-    ports:
-      - "3000:3000"     # http://localhost:3000 — admin/admin
-    environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: admin
-      GF_USERS_ALLOW_SIGN_UP: "false"
-    volumes:
-      - grafana-data:/var/lib/grafana
-      - ./infra/grafana/provisioning:/etc/grafana/provisioning
-      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards
-    depends_on:
-      - timescaledb
-    restart: unless-stopped
-
   # ---------------- Aplicação (servidor central) ----------------
   controller:
     build: ./controller
@@ -151,6 +134,5 @@ services:
 volumes:
   rabbitmq-data:
   pg-data:
-  grafana-data:
   agent-a-data:
   agent-b-data:

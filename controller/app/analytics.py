@@ -8,6 +8,8 @@ Segurança: nomes de tabela/campo usados em SQL vêm SEMPRE de listas fixas
 (whitelists) — os valores fornecidos pelo cliente apenas selecionam uma entrada
 dessas listas, nunca são interpolados diretamente.
 """
+import json
+
 from sqlalchemy import text
 
 from .db import engine
@@ -165,6 +167,41 @@ def run_stats(hours=24):
         "error": int(r["error"] or 0),
         "last_observed_at": _iso(r["last_observed"]),
     }
+
+
+def traceroute_recent(probe_id=None, target=None, limit=20):
+    """Traceroutes mais recentes, com os saltos (hops)."""
+    clauses = []
+    params = {"limit": int(limit)}
+    if probe_id:
+        clauses.append("probe_id = :probe")
+        params["probe"] = probe_id
+    if target:
+        clauses.append("target = :target")
+        params["target"] = target
+    where = (" WHERE " + " AND ".join(clauses)) if clauses else ""
+    sql = (
+        "SELECT observed_at, probe_id, target, target_probe, hop_count, hops "
+        f"FROM traceroute_measurements{where} ORDER BY observed_at DESC LIMIT :limit"
+    )
+    with engine.connect() as conn:
+        if not _table_exists(conn, "traceroute_measurements"):
+            return []
+        rows = conn.execute(text(sql), params).mappings().all()
+    out = []
+    for r in rows:
+        hops = r["hops"]
+        if isinstance(hops, str):
+            try:
+                hops = json.loads(hops)
+            except Exception:  # noqa: BLE001
+                hops = []
+        out.append({
+            "observed_at": _iso(r["observed_at"]), "probe_id": r["probe_id"],
+            "target": r["target"], "target_probe": r["target_probe"] or None,
+            "hop_count": r["hop_count"], "hops": hops or [],
+        })
+    return out
 
 
 def probe_activity(minutes=30):

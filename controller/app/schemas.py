@@ -52,3 +52,41 @@ class Plan(BaseModel):
     enabled: bool = False
     groups: dict[str, list[str]] = Field(default_factory=dict)
     jobs: list[Job]
+
+
+# --------------------------------------------------------------------------
+# Autenticação
+# --------------------------------------------------------------------------
+class LoginIn(BaseModel):
+    username: str
+    password: str
+
+
+class RefreshIn(BaseModel):
+    refresh_token: str
+
+
+class TokenOut(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    username: str
+    must_change_password: bool = False
+
+
+class PasswordChangeIn(BaseModel):
+    current_password: str
+    new_password: str
+
+
+class UserIn(BaseModel):
+    username: str
+    password: str
+
+
+class UserOut(BaseModel):
+    id: int
+    username: str
+    role: str
+    active: bool
+    must_change_password: bool

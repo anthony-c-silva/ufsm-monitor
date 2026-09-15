@@ -48,6 +48,36 @@ class Plan(Base):
     created_at = Column(DateTime(timezone=True), default=utcnow)
 
 
+class User(Base):
+    """Usuários do dashboard. Papel único ADMIN (autenticado = acesso total)."""
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    username = Column(String, unique=True, nullable=False, index=True)
+    password_hash = Column(String, nullable=False)
+    role = Column(String, default="admin")
+    must_change_password = Column(Boolean, default=False)
+    active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+
+
+class RefreshToken(Base):
+    """Refresh tokens (hash), com rotação e revogação."""
+    __tablename__ = "refresh_tokens"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    token_hash = Column(String, unique=True, index=True, nullable=False)
+    user_id = Column(Integer, index=True, nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    revoked = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+
+
+class Setting(Base):
+    """Configurações internas persistidas (ex.: segredo do JWT)."""
+    __tablename__ = "app_settings"
+    key = Column(String, primary_key=True)
+    value = Column(String)
+
+
 class TaskInstance(Base):
     """Auditoria das tarefas geradas/publicadas."""
     __tablename__ = "task_instances"

@@ -16,12 +16,13 @@ export default function Matrix({ notify, refreshKey }) {
   const [hours, setHours] = useState(24);
   const [mx, setMx] = useState(null);
   const [status, setStatus] = useState([]);
+  const [tr, setTr] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const load = () => {
     setLoading(true);
-    Promise.all([api.matrix(type, hours), api.probesStatus(30)])
-      .then(([m, s]) => { setMx(m); setStatus(s); })
+    Promise.all([api.matrix(type, hours), api.probesStatus(30), api.traceroute({ limit: 12 })])
+      .then(([m, s, t]) => { setMx(m); setStatus(s); setTr(t); })
       .catch((e) => notify("Erro ao carregar matriz: " + e.message, "err"))
       .finally(() => setLoading(false));
   };
@@ -122,6 +123,45 @@ export default function Matrix({ notify, refreshKey }) {
             {status.length === 0 && <tr><td colSpan="7" className="muted">Nenhum probe cadastrado.</td></tr>}
           </tbody>
         </table>
+      </div>
+
+      <div className="section-title">Caminho (traceroute)</div>
+      <div className="card">
+        <div className="bd">
+          {tr.length === 0 ? (
+            <div className="empty-state">Sem traceroute recente. Inclua um job do tipo <code className="k">traceroute</code> em um plano.</div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {tr.map((t, i) => (
+                <div key={i} style={{ borderBottom: "1px solid var(--border)", paddingBottom: 12 }}>
+                  <div className="inline" style={{ justifyContent: "space-between" }}>
+                    <div>
+                      <span className="mono">{t.probe_id}</span> <span className="muted">→</span>{" "}
+                      <span className="mono">{t.target_probe || t.target}</span>
+                      <span className="badge blue" style={{ marginLeft: 8 }}>{t.hop_count} saltos</span>
+                    </div>
+                    <span className="muted" title={fmtTime(t.observed_at)}>{fmtAgo(t.observed_at)}</span>
+                  </div>
+                  <div className="scroll-x" style={{ marginTop: 8 }}>
+                    <table>
+                      <thead><tr><th>#</th><th>endereço</th><th>rtt médio</th><th>perda</th></tr></thead>
+                      <tbody>
+                        {(t.hops || []).map((h, k) => (
+                          <tr key={k}>
+                            <td>{h.ttl}</td>
+                            <td className="mono">{h.address || "*"}</td>
+                            <td>{h.rtt_avg_ms != null ? Number(h.rtt_avg_ms).toFixed(1) + " ms" : "—"}</td>
+                            <td>{h.loss_pct != null ? Number(h.loss_pct).toFixed(0) + " %" : "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </>
   );

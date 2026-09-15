@@ -96,6 +96,16 @@ CREATE TABLE IF NOT EXISTS iperf_measurements (
     retransmits INT,
     PRIMARY KEY (run_id, observed_at)
 );
+CREATE TABLE IF NOT EXISTS traceroute_measurements (
+    run_id UUID NOT NULL,
+    observed_at TIMESTAMPTZ NOT NULL,
+    probe_id TEXT NOT NULL,
+    target TEXT,
+    target_probe TEXT,
+    hop_count INT,
+    hops JSONB,
+    PRIMARY KEY (run_id, observed_at)
+);
 """
 
 HYPERTABLES = [
@@ -104,6 +114,7 @@ HYPERTABLES = [
     "dns_measurements",
     "http_measurements",
     "iperf_measurements",
+    "traceroute_measurements",
 ]
 
 
@@ -224,6 +235,19 @@ def insert_result(env: dict):
                  "protocol": res.get("protocol"), "dur": res.get("duration_seconds"),
                  "bytes": res.get("bytes_transferred"), "tput": res.get("throughput_bps"),
                  "retr": res.get("retransmits")},
+            )
+        elif kind == "traceroute":
+            hops = res.get("hops") or []
+            conn.execute(
+                text(
+                    """INSERT INTO traceroute_measurements
+                       (run_id, observed_at, probe_id, target, target_probe, hop_count, hops)
+                       VALUES (:run_id, :observed_at, :probe_id, :target, :tprobe, :hc,
+                        CAST(:hops AS JSONB))
+                       ON CONFLICT (run_id, observed_at) DO NOTHING"""
+                ),
+                {**dims, "tprobe": common["target_probe"], "hc": len(hops),
+                 "hops": json.dumps(hops)},
             )
 
 
