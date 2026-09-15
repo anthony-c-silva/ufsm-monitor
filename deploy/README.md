@@ -66,6 +66,19 @@ journalctl -u ufsm-monitor-deploy.service -f   # log ao vivo (útil para ver o r
 - **Forçar agora:** `sudo systemctl start ufsm-monitor-deploy.service`.
 - **Pausar o automático:** `sudo systemctl disable --now ufsm-monitor-deploy.timer`.
 
+## Trava de CI (deploy só com build verde)
+
+Por padrão (`REQUIRE_CI=1`), o `deploy.sh` só puxa e reconstrói um commit **depois** de o
+workflow `.github/workflows/ci.yml` daquele commit **passar** (consulta a API do GitHub
+Actions). Se o CI ainda está rodando, ele aguarda o próximo ciclo; se o CI falhou, o deploy é
+**adiado até um commit verde**. Assim o servidor nunca sobe um build quebrado.
+
+- **Desligar a trava** (voltar a deployar todo commit): defina `Environment=REQUIRE_CI=0` no
+  `ufsm-monitor-deploy.service` (ou exporte `REQUIRE_CI=0` ao rodar manualmente).
+- **Repositório privado / limite de API:** defina `Environment=GITHUB_TOKEN=<token só-leitura>`
+  no `.service` (opcional; para repo público não é necessário).
+- O `owner/repo` é detectado do `git remote`; para forçar, use `REPO_SLUG=owner/repo`.
+
 ## Observações
 
 - O `deploy.sh` sobe **só o núcleo** (controlador, ingestão, RabbitMQ, TimescaleDB, painel);
