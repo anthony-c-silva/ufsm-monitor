@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptrace"
+	"strings"
 	"time"
 )
 
@@ -29,6 +30,11 @@ func HTTP(ctx context.Context, url, method string, timeoutMs int) Result {
 	}
 	if timeoutMs <= 0 {
 		timeoutMs = 5000
+	}
+	// Aceita alvo sem esquema (ex.: IP/host puro vindo do address de um probe):
+	// assume http:// para permitir medicoes HTTP probe->probe.
+	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
+		url = "http://" + url
 	}
 	res := &HTTPResult{URL: url, Status: "failure"}
 

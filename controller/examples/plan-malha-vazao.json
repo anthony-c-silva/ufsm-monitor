@@ -1,0 +1,17 @@
+{
+  "plan_id": "malha-vazao",
+  "revision": 1,
+  "enabled": false,
+  "groups": { "malha": ["probe-ct-01", "probe-srv-01"] },
+  "jobs": [
+    {
+      "id": "iperf-malha",
+      "type": "iperf3",
+      "sources": ["group:malha"],
+      "targets": ["group:malha"],
+      "exclude_self": true,
+      "period_seconds": 900,
+      "duration_seconds": 10
+    }
+  ]
+}

@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBearer
 from sqlalchemy.orm import Session
 
 from . import analytics, auth, ingestion, models, planning, publisher, scheduler
@@ -44,11 +45,15 @@ async def lifespan(_app: FastAPI):
     yield
 
 
+# Esquema de segurança do OpenAPI/Swagger (habilita o botão "Authorize" em /docs).
+# auto_error=False porque quem valida de fato é auth.guard (que libera as rotas públicas).
+bearer_scheme = HTTPBearer(auto_error=False, description="Cole o access_token obtido em POST /auth/login")
+
 app = FastAPI(
     title="UFSM Monitor Controller",
     version="0.1.0",
     lifespan=lifespan,
-    dependencies=[Depends(auth.guard)],  # todas as rotas exigem login (exceto as públicas)
+    dependencies=[Depends(bearer_scheme), Depends(auth.guard)],  # login exigido, exceto rotas públicas
 )
 
 # CORS para o front-end (dashboard). Em produção, restrinja via FRONTEND_ORIGINS.

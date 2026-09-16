@@ -1,0 +1,80 @@
+{
+  "plan_id": "malha-ufsm",
+  "revision": 1,
+  "enabled": true,
+  "groups": { "malha": ["probe-ct-01", "probe-srv-01"] },
+  "jobs": [
+    {
+      "id": "icmp-infra-ufsm",
+      "type": "icmp",
+      "sources": ["group:malha"],
+      "targets": ["200.18.33.23", "45.168.147.19", "200.18.33.169", "200.132.39.132"],
+      "period_seconds": 60,
+      "samples": 10,
+      "timeout_ms": 1000
+    },
+    {
+      "id": "icmp-baseline",
+      "type": "icmp",
+      "sources": ["group:malha"],
+      "targets": ["1.1.1.1", "8.8.8.8", "9.9.9.9"],
+      "period_seconds": 60,
+      "samples": 10
+    },
+    {
+      "id": "icmp-malha",
+      "type": "icmp",
+      "sources": ["group:malha"],
+      "targets": ["group:malha"],
+      "exclude_self": true,
+      "period_seconds": 60,
+      "samples": 10
+    },
+    {
+      "id": "http-ufsm",
+      "type": "http",
+      "sources": ["group:malha"],
+      "targets": ["https://www.ufsm.br", "https://portal.ufsm.br"],
+      "period_seconds": 300,
+      "method": "GET",
+      "timeout_ms": 5000
+    },
+    {
+      "id": "http-malha",
+      "type": "http",
+      "sources": ["group:malha"],
+      "targets": ["http://192.168.129.200:8090/", "http://192.168.129.201:8080/"],
+      "exclude_self": true,
+      "period_seconds": 120,
+      "method": "GET",
+      "timeout_ms": 2000
+    },
+    {
+      "id": "dns-interno",
+      "type": "dns",
+      "sources": ["group:malha"],
+      "targets": ["www.ufsm.br"],
+      "period_seconds": 300,
+      "qtype": "A",
+      "resolver": "200.18.33.23"
+    },
+    {
+      "id": "dns-publico",
+      "type": "dns",
+      "sources": ["group:malha"],
+      "targets": ["www.ufsm.br"],
+      "period_seconds": 300,
+      "qtype": "A",
+      "resolver": "1.1.1.1"
+    },
+    {
+      "id": "traceroute-caminho",
+      "type": "traceroute",
+      "sources": ["group:malha"],
+      "targets": ["200.18.33.23", "1.1.1.1"],
+      "period_seconds": 900,
+      "cycles": 3,
+      "max_hops": 30
+    }
+  ]
+}

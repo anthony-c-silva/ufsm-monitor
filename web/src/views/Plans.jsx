@@ -46,6 +46,7 @@ export default function Plans({ notify, refreshKey }) {
   const [jobs, setJobs] = useState([blankJob()]);
   const [result, setResult] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [importText, setImportText] = useState("");
 
   const groupNames = useMemo(() => {
     const names = new Set(groups.map((g) => g.name));
@@ -61,7 +62,7 @@ export default function Plans({ notify, refreshKey }) {
   const targetOptions = useMemo(() => [
     ...groupNames.map((n) => ({ value: "group:" + n, label: "grupo:" + n })),
     ...probes.map((p) => ({ value: "probe:" + p.probe_id, label: p.probe_id })),
-    ...targets.filter((t) => t.kind === "external").map((t) => ({ value: t.address, label: t.name + " (" + t.address + ")" })),
+    ...targets.map((t) => ({ value: t.address, label: t.name + " (" + t.address + (t.kind === "probe" ? ", probe" : "") + ")" })),
   ], [groupNames, probes, targets]);
 
   const patchJob = (i, patch) => setJobs((js) => js.map((j, k) => (k === i ? { ...j, ...patch } : j)));
@@ -122,6 +123,26 @@ export default function Plans({ notify, refreshKey }) {
     finally { setBusy(false); }
   };
 
+  // ---------------- importar plano de JSON ----------------
+  const parseImport = () => {
+    try { return JSON.parse(importText); }
+    catch (e) { notify("JSON inválido: " + e.message, "err"); return null; }
+  };
+  const importValidate = async () => {
+    const p = parseImport(); if (!p) return;
+    try { setResult({ kind: "validate", data: await api.validatePlan(p) }); }
+    catch (e) { notify("Erro: " + e.message, "err"); }
+  };
+  const importCreate = async () => {
+    const p = parseImport(); if (!p) return;
+    try {
+      const r = await api.createPlan(p);
+      notify("Plano '" + (p.plan_id || "?") + "' criado", "ok");
+      setResult({ kind: "created", data: r });
+      loadAll();
+    } catch (e) { notify("Erro ao criar: " + e.message, "err"); }
+  };
+
   // ---------------- list actions ----------------
   const act = async (fn, id, ok) => {
     try { await fn(id); notify(ok); loadAll(); } catch (e) { notify("Erro: " + e.message, "err"); }
@@ -167,6 +188,22 @@ export default function Plans({ notify, refreshKey }) {
             {plans.length === 0 && <tr><td colSpan="4" className="muted">Nenhum plano ainda. Monte um abaixo.</td></tr>}
           </tbody>
         </table>
+      </div>
+
+      <div className="section-title">Importar plano (JSON)</div>
+      <div className="card">
+        <div className="bd">
+          <textarea
+            value={importText}
+            onChange={(e) => setImportText(e.target.value)}
+            placeholder='Cole aqui o JSON de um plano (ex.: controller/examples/plan-malha-ufsm.json)...'
+            style={{ width: "100%", minHeight: 120, fontFamily: "monospace", fontSize: 12.5 }}
+          />
+          <div className="btn-row" style={{ marginTop: 10 }}>
+            <button className="btn" onClick={importValidate}>Validar JSON</button>
+            <button className="btn primary" onClick={importCreate}>Criar do JSON</button>
+          </div>
+        </div>
       </div>
 
       <div className="section-title">Construtor de plano</div>

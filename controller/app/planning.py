@@ -19,6 +19,17 @@ class TaskSpec:
     parameters: dict = field(default_factory=dict)
 
 
+def _host_of(addr: str) -> str:
+    """Extrai o host de um endereço/URL: 'http://1.2.3.4:8090/x' -> '1.2.3.4'."""
+    s = addr
+    if "://" in s:
+        s = s.split("://", 1)[1]
+    s = s.split("/", 1)[0].split("?", 1)[0]
+    if s.startswith("["):  # IPv6 [::1]:porta
+        return s[1:].split("]", 1)[0]
+    return s.split(":", 1)[0]
+
+
 # ----------------------------------------------------------------------------
 # Resolução de referências
 # ----------------------------------------------------------------------------
@@ -99,6 +110,12 @@ def expand(plan: Plan, db: Session) -> list[TaskSpec]:
             for kind, addr, tpid in targets:
                 if job.exclude_self and kind == "probe" and tpid == src:
                     continue
+                # exclude_self também vale para destino EXTERNO literal cujo host
+                # coincide com o endereço do próprio probe de origem (evita medir a si mesmo).
+                if job.exclude_self and kind == "external":
+                    p = db.get(models.Probe, src)
+                    if p and p.address and _host_of(addr) == p.address:
+                        continue
                 params = build_parameters(job)
                 if job.type == "dns":
                     if kind == "probe":

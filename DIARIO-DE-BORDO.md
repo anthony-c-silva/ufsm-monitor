@@ -288,3 +288,61 @@ selecionar 10 artigos; demonstrar rodando; corrigir a narrativa do fluxo de dado
 - **Validado ✔** Após `docker compose up` + seed, a matriz do Grafana acumulou 4 amostras
   por par (probe↔probe e externos) **sem acionamento manual** — plataforma coletando
   sozinha. "Resultado mínimo esperado" da proposta atingido.
+
+---
+
+## 2026-09-14/15 — Dashboard próprio, segurança, CI/CD e deploy físico (hardware real)
+
+**Dashboard web próprio (substitui o Grafana).** Front-end **React/Vite + Nginx** (`web/`),
+servido junto na stack. Telas: visão geral, inventário (probes/destinos/grupos), **construtor
+visual de planos**, séries temporais (Recharts), matriz probe×destino, traceroute e usuários.
+Tema escuro, responsivo, fonte Inter, ícones lucide. Grafana removido do compose.
+
+- **DP-14 — Autenticação.** Todas as rotas da API exigem login. **JWT** (access ~30 min) +
+  **refresh rotativo** com hash no banco (revogável); senha com **bcrypt**; rate-limit de
+  login; segredo do JWT gerado e persistido no banco. **Papel único ADMIN** (autenticado =
+  acesso total). `admin/admin` no 1º boot com **troca de senha obrigatória**.
+
+**Melhorias:** traceroute agora **persistido** (`traceroute_measurements` + endpoint + tela);
+**auto-refresh** dos painéis; endpoints de leitura (séries, matriz, status, visão geral).
+
+- **DP-15 — CI/CD.** `.github/workflows/ci.yml`: a cada push, builda controlador (import),
+  dashboard (`npm build`), agente (`go build` + cross-compile arm64) e **as imagens Docker**.
+  O auto-deploy é **pull-based** (o servidor puxa o `main` a cada ~2 min via systemd timer),
+  com **trava de CI**: só reconstrói commit com o workflow **verde** (consulta a API do
+  GitHub Actions). Firewall-friendly (só saída), roda atrás do NAT da UFSM.
+
+**Deploy físico — hardware real.** Servidor central (**Ubuntu Server**, i5, Docker) e um
+**Raspberry Pi 4B** (`probe-ct-01`, Debian 13 arm64) na mesma LAN. O servidor também atua como
+probe (`probe-srv-01`). Binário arm64 compilado no servidor via Docker (sem instalar Go),
+agente instalado via **systemd**, credencial `probe` no RabbitMQ (o `guest` não conecta
+remoto). Inventário e planos cadastrados no dashboard.
+
+**Resultado ✔ (produção):** malha funcionando **nas duas direções** (`probe-ct-01 ↔
+probe-srv-01`), medindo infra da UFSM (DNS/NTP), destinos de controle (1.1.1.1/8.8.8.8/9.9.9.9)
+e HTTP/DNS/traceroute. **~103 medições/24 h, 99 % de sucesso, 100 tarefas publicadas.** A
+**outbox SQLite** drenou registros acumulados quando o broker subiu — tolerância a falha
+(Fase 3) comprovada em campo.
+
+**Perrengues resolvidos:** (a) **relógio do servidor** — bateria CMOS descarregada (RTC em
+2013) fazia o clock cair no passado → o Git falhava a validação TLS do GitHub
+(`SSL certificate verification failed`); acertado com `timedatectl` (NTP + ajuste manual);
+(b) **CI do agente vermelho** — `go.mod` não declarava `github.com/miekg/dns` (o Dockerfile
+disfarçava com `go mod tidy`); adicionado ao `go.mod` + passo `go mod tidy` no CI.
+
+**Correções de código (achados do deploy):** `scripts/demo-seed.sh` refeito com login +
+`Authorization: Bearer` + `curl -f`; **`HTTPBearer`** no FastAPI (botão *Authorize* no
+Swagger); **HTTP probe→probe** aceita alvo sem esquema (assume `http://`); **`exclude_self`**
+passou a valer também para destino externo cujo host é o próprio probe (evita loopback);
+construtor de planos mostra destinos `probe` e `external`; botão **importar JSON** de plano.
+Planos versionados em `controller/examples/plan-malha-ufsm.json` e `plan-malha-vazao.json`.
+
+**Limitações (para a Avaliação):** `probe-srv-01` divide CPU/rede com o RabbitMQ/TimescaleDB
+(ruído do host sob carga); o Pi está em **DHCP** (se o lease mudar, o `address` do inventário
+aponta errado — pedir reserva); volume de tráfego desprezível (o que mais chama atenção de IDS
+é o padrão do traceroute e a varredura feita ao procurar o Pi na rede).
+
+**Pendências:** identificar a 1 medição que falhou; checar risco de "tarefa expirada"
+(`TASK_TTL_SECONDS=90` vs. fila serial); reserva de DHCP para o Pi; trocar a senha do usuário
+`probe`; avisar o NTI da UFSM; rodar `malha-vazao` manualmente (iperf3) com a rede quieta;
+serialização do iperf3 na malha (as duas direções não devem rodar simultâneas).
