@@ -131,10 +131,12 @@ def matrix(mtype, hours=24):
     return {"type": mtype, "primary": primary, "metrics": cols, "cells": cells}
 
 
-def recent(limit=50):
+def recent(limit=10):
+    # Exclui 'sysinfo' (inventário do agente a cada 60s, sem destino) — não é medição.
     sql = (
         "SELECT observed_at, probe_id, measurement_type, target, target_probe, status, error_message "
-        "FROM measurement_runs ORDER BY observed_at DESC LIMIT :limit"
+        "FROM measurement_runs WHERE measurement_type <> 'sysinfo' "
+        "ORDER BY observed_at DESC LIMIT :limit"
     )
     with engine.connect() as conn:
         if not _table_exists(conn, "measurement_runs"):
@@ -155,7 +157,8 @@ def run_stats(hours=24):
         "       count(*) FILTER (WHERE status = 'success') AS success, "
         "       count(*) FILTER (WHERE status <> 'success') AS error, "
         "       max(observed_at) AS last_observed "
-        "FROM measurement_runs WHERE observed_at > now() - make_interval(hours => :hours)"
+        "FROM measurement_runs "
+        "WHERE measurement_type <> 'sysinfo' AND observed_at > now() - make_interval(hours => :hours)"
     )
     with engine.connect() as conn:
         if not _table_exists(conn, "measurement_runs"):
@@ -166,6 +169,30 @@ def run_stats(hours=24):
         "success": int(r["success"] or 0),
         "error": int(r["error"] or 0),
         "last_observed_at": _iso(r["last_observed"]),
+    }
+
+
+def activity(hours=24, bucket_minutes=30):
+    """Contagem de medições ao longo do tempo (para o gráfico da visão geral)."""
+    sql = (
+        "SELECT time_bucket(make_interval(mins => :bmin), observed_at) AS bucket, "
+        "       count(*) AS total, "
+        "       count(*) FILTER (WHERE status = 'success') AS success "
+        "FROM measurement_runs "
+        "WHERE measurement_type <> 'sysinfo' AND observed_at > now() - make_interval(hours => :hours) "
+        "GROUP BY bucket ORDER BY bucket ASC"
+    )
+    with engine.connect() as conn:
+        if not _table_exists(conn, "measurement_runs"):
+            return {"bucket_minutes": bucket_minutes, "points": []}
+        rows = conn.execute(text(sql), {"bmin": int(bucket_minutes), "hours": int(hours)}).mappings().all()
+    return {
+        "bucket_minutes": bucket_minutes,
+        "points": [
+            {"t": _iso(r["bucket"]), "total": int(r["total"]),
+             "success": int(r["success"]), "error": int(r["total"]) - int(r["success"])}
+            for r in rows
+        ],
     }
 
 

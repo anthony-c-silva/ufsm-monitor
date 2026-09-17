@@ -420,6 +420,11 @@ def stats_overview(db: Session = Depends(get_db)):
     }
 
 
+@app.get("/stats/activity")
+def stats_activity(hours: int = 24, bucket_minutes: int = 30):
+    return analytics.activity(hours, bucket_minutes)
+
+
 @app.get("/measurements/fields")
 def measurements_fields():
     return analytics.known_fields()

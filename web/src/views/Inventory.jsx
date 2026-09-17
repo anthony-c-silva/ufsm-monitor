@@ -1,15 +1,21 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../api.js";
+import { SkeletonTable } from "../components/Skeleton.jsx";
 
 export default function Inventory({ notify, refreshKey }) {
   const [probes, setProbes] = useState([]);
   const [targets, setTargets] = useState([]);
   const [groups, setGroups] = useState([]);
 
-  const load = () =>
-    Promise.all([api.probes(), api.targets(), api.groups()])
+  const [loading, setLoading] = useState(true);
+
+  const load = () => {
+    setLoading(true);
+    return Promise.all([api.probes(), api.targets(), api.groups()])
       .then(([p, t, g]) => { setProbes(p); setTargets(t); setGroups(g); })
-      .catch((e) => notify("Falha ao carregar inventário: " + e.message, "err"));
+      .catch((e) => notify("Falha ao carregar inventário: " + e.message, "err"))
+      .finally(() => setLoading(false));
+  };
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [refreshKey]);
 
@@ -40,6 +46,15 @@ export default function Inventory({ notify, refreshKey }) {
     if (!confirm(`Remover ${label}?`)) return;
     try { await fn(arg); notify("Removido"); load(); } catch (e) { notify("Erro: " + e.message, "err"); }
   };
+
+  if (loading && probes.length === 0 && targets.length === 0 && groups.length === 0) {
+    return (
+      <>
+        <div className="section-title">Inventário</div>
+        <SkeletonTable rows={6} cols={5} />
+      </>
+    );
+  }
 
   return (
     <>

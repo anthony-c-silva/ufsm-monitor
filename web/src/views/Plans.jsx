@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../api.js";
 import { TYPE_LABEL } from "../format.js";
+import MultiSelect from "../components/MultiSelect.jsx";
+import { SkeletonTable } from "../components/Skeleton.jsx";
 
 const TYPES = ["icmp", "iperf3", "dns", "http", "traceroute"];
 const num = (v) => (v === "" || v === null || v === undefined ? undefined : Number(v));
@@ -31,11 +33,15 @@ export default function Plans({ notify, refreshKey }) {
   const [groups, setGroups] = useState([]);
   const [targets, setTargets] = useState([]);
   const [expanded, setExpanded] = useState(null); // {plan_id, spec}
+  const [loading, setLoading] = useState(true);
 
-  const loadAll = () =>
-    Promise.all([api.plans(), api.probes(), api.groups(), api.targets()])
+  const loadAll = () => {
+    setLoading(true);
+    return Promise.all([api.plans(), api.probes(), api.groups(), api.targets()])
       .then(([pl, pr, gr, tg]) => { setPlans(pl); setProbes(pr); setGroups(gr); setTargets(tg); })
-      .catch((e) => notify("Falha ao carregar: " + e.message, "err"));
+      .catch((e) => notify("Falha ao carregar: " + e.message, "err"))
+      .finally(() => setLoading(false));
+  };
 
   useEffect(() => { loadAll(); /* eslint-disable-next-line */ }, [refreshKey]);
 
@@ -147,6 +153,17 @@ export default function Plans({ notify, refreshKey }) {
   const act = async (fn, id, ok) => {
     try { await fn(id); notify(ok); loadAll(); } catch (e) { notify("Erro: " + e.message, "err"); }
   };
+  const togglePlan = async (p) => {
+    const target = !p.enabled;
+    setPlans((ps) => ps.map((x) => (x.plan_id === p.plan_id ? { ...x, enabled: target } : x))); // otimista
+    try {
+      await (target ? api.enablePlan : api.disablePlan)(p.plan_id);
+      notify(target ? `Plano '${p.plan_id}' habilitado` : `Plano '${p.plan_id}' desabilitado`, "ok");
+    } catch (e) {
+      setPlans((ps) => ps.map((x) => (x.plan_id === p.plan_id ? { ...x, enabled: p.enabled } : x))); // reverte
+      notify("Erro ao alterar o plano: " + e.message, "err");
+    }
+  };
   const runPlan = async (id) => {
     try { const r = await api.runPlan(id); notify(`Rodou '${id}': ${r.published} tarefa(s) publicada(s)`, "ok"); }
     catch (e) { notify("Erro ao rodar: " + e.message, "err"); }
@@ -155,6 +172,15 @@ export default function Plans({ notify, refreshKey }) {
     if (expanded?.plan_id === id) return setExpanded(null);
     try { const p = await api.getPlan(id); setExpanded(p); } catch (e) { notify("Erro: " + e.message, "err"); }
   };
+
+  if (loading && plans.length === 0 && probes.length === 0) {
+    return (
+      <>
+        <div className="section-title">Planos cadastrados</div>
+        <SkeletonTable rows={4} cols={4} />
+      </>
+    );
+  }
 
   return (
     <>
@@ -168,12 +194,14 @@ export default function Plans({ notify, refreshKey }) {
                 <tr>
                   <td className="mono">{p.plan_id}</td>
                   <td>{p.revision}</td>
-                  <td>{p.enabled ? <span className="badge ok">sim</span> : <span className="badge muted">não</span>}</td>
+                  <td>
+                    <label className="switch" title={p.enabled ? "habilitado" : "desabilitado"}>
+                      <input type="checkbox" checked={p.enabled} onChange={() => togglePlan(p)} />
+                      <span className="track"><span className="thumb" /></span>
+                    </label>
+                  </td>
                   <td>
                     <div className="btn-row">
-                      {p.enabled
-                        ? <button className="btn small" onClick={() => act(api.disablePlan, p.plan_id, "Plano desabilitado")}>desabilitar</button>
-                        : <button className="btn small" onClick={() => act(api.enablePlan, p.plan_id, "Plano habilitado")}>habilitar</button>}
                       <button className="btn small primary" onClick={() => runPlan(p.plan_id)}>rodar agora</button>
                       <button className="btn small" onClick={() => viewSpec(p.plan_id)}>{expanded?.plan_id === p.plan_id ? "ocultar" : "ver JSON"}</button>
                       <button className="btn small danger" onClick={() => confirm(`Remover plano ${p.plan_id}?`) && act(api.delPlan, p.plan_id, "Plano removido")}>remover</button>
@@ -271,10 +299,10 @@ export default function Plans({ notify, refreshKey }) {
                 </div>
 
                 <div style={{ marginTop: 10 }} className="muted">origens (probes/grupos):</div>
-                <MultiChips options={sourceOptions} selected={j.sources} onToggle={(v) => toggleIn(i, "sources", v)} />
+                <MultiSelect options={sourceOptions} selected={j.sources} onChange={(vals) => patchJob(i, { sources: vals })} placeholder="selecionar origens..." />
 
                 <div style={{ marginTop: 10 }} className="muted">destinos (probes/grupos/externos):</div>
-                <MultiChips options={targetOptions} selected={j.targets} onToggle={(v) => toggleIn(i, "targets", v)} />
+                <MultiSelect options={targetOptions} selected={j.targets} onChange={(vals) => patchJob(i, { targets: vals })} placeholder="selecionar destinos..." />
 
                 {/* parâmetros por tipo */}
                 <div className="form-grid" style={{ marginTop: 12 }}>

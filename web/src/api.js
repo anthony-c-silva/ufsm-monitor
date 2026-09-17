@@ -57,7 +57,8 @@ export const api = {
 
   // visão geral / status
   overview: () => req("/stats/overview"),
-  recent: (limit = 50) => req("/measurements/recent" + qs({ limit })),
+  activity: (q = {}) => req("/stats/activity" + qs(q)),
+  recent: (limit = 10) => req("/measurements/recent" + qs({ limit })),
   probesStatus: (minutes = 30) => req("/probes/status" + qs({ minutes })),
 
   // inventário
