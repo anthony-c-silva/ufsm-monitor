@@ -52,12 +52,21 @@ export default function Series({ notify, refreshKey }) {
   };
   useEffect(() => { if (meta) fetchSeries(); /* eslint-disable-next-line */ }, [refreshKey, meta]);
 
-  // agrupa pontos em linhas (probe → destino)
+  // mapa endereço -> nome amigável (exibir o destino pelo nome, não pelo IP/host)
+  const nameByAddr = useMemo(() => {
+    const m = {};
+    targets.forEach((t) => { if (t.address) m[t.address] = t.name; });
+    probes.forEach((p) => { if (p.address) m[p.address] = p.probe_id; });
+    return m;
+  }, [targets, probes]);
+
+  // agrupa pontos em linhas (probe → destino), rotulando o destino pelo nome
   const { data, keys } = useMemo(() => {
     const pts = resp?.points || [];
     const groups = {};
     for (const p of pts) {
-      const key = `${p.probe_id} → ${p.target}`;
+      const dst = nameByAddr[p.target] || p.target;
+      const key = `${p.probe_id} → ${dst}`;
       (groups[key] ||= []).push(p);
     }
     let keys = Object.keys(groups);
@@ -67,13 +76,15 @@ export default function Series({ notify, refreshKey }) {
     const rowByTime = new Map(times.map((t) => [t, { t }]));
     shown.forEach((k) => groups[k].forEach((p) => { rowByTime.get(p.observed_at)[k] = p.value; }));
     return { data: [...rowByTime.values()], keys: shown };
-  }, [resp]);
+  }, [resp, nameByAddr]);
 
-  const targetList = useMemo(() => {
-    const s = new Set();
-    targets.forEach((t) => s.add(t.address));
-    probes.forEach((p) => p.address && s.add(p.address));
-    return [...s];
+  // opções de destino: valor = endereço (o que o filtro usa), rótulo = nome amigável
+  const targetOptions = useMemo(() => {
+    const opts = [];
+    const seen = new Set();
+    targets.forEach((t) => { if (t.address && !seen.has(t.address)) { seen.add(t.address); opts.push({ value: t.address, label: t.name }); } });
+    probes.forEach((p) => { if (p.address && !seen.has(p.address)) { seen.add(p.address); opts.push({ value: p.address, label: p.probe_id + " (probe)" }); } });
+    return opts;
   }, [targets, probes]);
 
   return (
@@ -98,8 +109,10 @@ export default function Series({ notify, refreshKey }) {
               </select>
             </label>
             <label className="fld">destino
-              <input list="targetlist" value={target} onChange={(e) => setTarget(e.target.value)} placeholder="todos" />
-              <datalist id="targetlist">{targetList.map((t) => <option key={t} value={t} />)}</datalist>
+              <select value={target} onChange={(e) => setTarget(e.target.value)}>
+                <option value="">todos</option>
+                {targetOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
             </label>
             <label className="fld">janela de tempo
               <select value={hours} onChange={(e) => setHours(Number(e.target.value))}>
