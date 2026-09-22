@@ -68,8 +68,10 @@ def series(mtype, field=None, probe_id=None, target=None, hours=24, limit=2000):
     if not field or field not in TYPE_FIELDS[mtype]:
         field = PRIMARY_METRIC[mtype]
 
-    clauses = ["observed_at > now() - make_interval(hours => :hours)", f"{field} IS NOT NULL"]
-    params = {"hours": int(hours), "limit": int(limit)}
+    # Janela em minutos (aceita frações de hora, ex.: 0.5 => 30 min).
+    minutes = max(1, int(round(float(hours) * 60)))
+    clauses = ["observed_at > now() - make_interval(mins => :minutes)", f"{field} IS NOT NULL"]
+    params = {"minutes": minutes, "limit": int(limit)}
     if probe_id:
         clauses.append("probe_id = :probe")
         params["probe"] = probe_id

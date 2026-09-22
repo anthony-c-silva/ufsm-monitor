@@ -7,6 +7,18 @@ import { fmtValue, unitLabel, TYPE_LABEL, PALETTE } from "../format.js";
 
 const MAX_LINES = 8;
 
+// Faixas de tempo prontas (padrão de ferramentas de monitoramento).
+const WINDOWS = [
+  { h: 0.5, label: "Últimos 30 minutos", short: "últimos 30 min" },
+  { h: 1, label: "Última 1 hora", short: "última 1 h" },
+  { h: 2, label: "Últimas 2 horas", short: "últimas 2 h" },
+  { h: 6, label: "Últimas 6 horas", short: "últimas 6 h" },
+  { h: 12, label: "Últimas 12 horas", short: "últimas 12 h" },
+  { h: 24, label: "Últimas 24 horas", short: "últimas 24 h" },
+  { h: 48, label: "Últimos 2 dias", short: "últimos 2 dias" },
+  { h: 168, label: "Últimos 7 dias", short: "últimos 7 dias" },
+];
+
 export default function Series({ notify, refreshKey }) {
   const [meta, setMeta] = useState(null);
   const [probes, setProbes] = useState([]);
@@ -89,8 +101,11 @@ export default function Series({ notify, refreshKey }) {
               <input list="targetlist" value={target} onChange={(e) => setTarget(e.target.value)} placeholder="todos" />
               <datalist id="targetlist">{targetList.map((t) => <option key={t} value={t} />)}</datalist>
             </label>
-            <label className="fld">janela (horas)
-              <input type="number" min="1" value={hours} onChange={(e) => setHours(Number(e.target.value) || 24)} />
+            <label className="fld">janela de tempo
+              <select value={hours} onChange={(e) => setHours(Number(e.target.value))}>
+                {WINDOWS.map((w) => <option key={w.h} value={w.h}>{w.label}</option>)}
+              </select>
+              <span className="hint">período mostrado no gráfico</span>
             </label>
             <button className="btn primary" onClick={fetchSeries} disabled={loading}>Consultar</button>
           </div>
@@ -112,9 +127,14 @@ export default function Series({ notify, refreshKey }) {
                   <CartesianGrid strokeDasharray="3 3" stroke="#26313f" />
                   <XAxis
                     dataKey="t"
-                    tickFormatter={(t) => new Date(t).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                    tickFormatter={(t) => {
+                      const d = new Date(t);
+                      return hours > 48
+                        ? d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })
+                        : d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+                    }}
                     minTickGap={40} tick={{ fontSize: 11, fill: "#93a2b6" }} stroke="#26313f"
-                    label={{ value: `Horário (últimas ${hours}h)`, position: "insideBottom", offset: -12, fill: "#93a2b6", fontSize: 11 }}
+                    label={{ value: `Horário (${(WINDOWS.find((w) => w.h === hours)?.short) || hours + " h"})`, position: "insideBottom", offset: -12, fill: "#93a2b6", fontSize: 11 }}
                   />
                   <YAxis tick={{ fontSize: 11, fill: "#93a2b6" }} stroke="#26313f" width={64}
                     label={{ value: unitLabel(field) || "valor", angle: -90, position: "insideLeft", offset: 8, fill: "#93a2b6", fontSize: 11, style: { textAnchor: "middle" } }} />

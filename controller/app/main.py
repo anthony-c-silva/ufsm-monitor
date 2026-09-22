@@ -495,7 +495,7 @@ def measurements_series(
     field: str = "",
     probe_id: str = "",
     target: str = "",
-    hours: int = 24,
+    hours: float = 24,
     limit: int = 2000,
 ):
     return analytics.series(type, field or None, probe_id or None, target or None, hours, limit)
