@@ -25,17 +25,22 @@ export default function Overview({ notify, refreshKey }) {
 
   useEffect(() => {
     let alive = true;
-    setLoading(true);
-    Promise.all([api.overview(), api.activity({ hours: 24, bucket_minutes: 30 }), api.recent(10)])
-      .then(([o, a, r]) => {
-        if (!alive) return;
-        setOv(o);
-        setAct(a.points || []);
-        setRecent(r);
-      })
-      .catch((e) => notify("Falha ao carregar visão geral: " + e.message, "err"))
-      .finally(() => alive && setLoading(false));
-    return () => (alive = false);
+    // silent = atualização ao vivo (não mostra skeleton nem toast de erro)
+    const run = (silent) => {
+      if (!silent) setLoading(true);
+      Promise.all([api.overview(), api.activity({ hours: 24, bucket_minutes: 30 }), api.recent(10)])
+        .then(([o, a, r]) => {
+          if (!alive) return;
+          setOv(o);
+          setAct(a.points || []);
+          setRecent(r);
+        })
+        .catch((e) => { if (alive && !silent) notify("Falha ao carregar visão geral: " + e.message, "err"); })
+        .finally(() => { if (alive && !silent) setLoading(false); });
+    };
+    run(false);
+    const t = setInterval(() => run(true), 15000); // atualiza ao vivo a cada 15s
+    return () => { alive = false; clearInterval(t); };
   }, [refreshKey, notify]);
 
   if (loading && !ov) {
@@ -70,9 +75,12 @@ export default function Overview({ notify, refreshKey }) {
       <div className="card">
         <div className="hd">
           <h3><Activity size={15} /> Medições por período de 30 min</h3>
-          <span className={"badge " + (ov.scheduler.enabled ? "ok" : "muted")}>
-            {ov.scheduler.enabled ? "● scheduler ativo" : "○ scheduler desativado"}
-          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span className="live-badge"><span className="live-dot" /> ao vivo</span>
+            <span className={"badge " + (ov.scheduler.enabled ? "ok" : "muted")}>
+              {ov.scheduler.enabled ? "● scheduler ativo" : "○ scheduler desativado"}
+            </span>
+          </div>
         </div>
         <div className="bd">
           {act.length === 0 ? (
@@ -103,8 +111,8 @@ export default function Overview({ notify, refreshKey }) {
                     contentStyle={{ background: "#161d28", border: "1px solid #26313f", borderRadius: 8, color: "#e7edf5" }}
                     labelStyle={{ color: "#93a2b6" }} itemStyle={{ color: "#e7edf5" }} />
                   <Legend verticalAlign="top" height={24} wrapperStyle={{ fontSize: 11 }} />
-                  <Area type="monotone" dataKey="success" name="sucesso" stroke="#34d399" fill="url(#gOk)" fillOpacity={1} isAnimationActive={false} />
-                  <Area type="monotone" dataKey="error" name="falha" stroke="#f87171" fill="url(#gErr)" fillOpacity={1} isAnimationActive={false} />
+                  <Area type="monotone" dataKey="success" name="sucesso" stroke="#34d399" fill="url(#gOk)" fillOpacity={1} isAnimationActive={true} animationDuration={700} />
+                  <Area type="monotone" dataKey="error" name="falha" stroke="#f87171" fill="url(#gErr)" fillOpacity={1} isAnimationActive={true} animationDuration={700} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
