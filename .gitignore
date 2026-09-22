@@ -32,3 +32,9 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+
+# Node / frontend (dependencias e build — nao versionar)
+node_modules/
+/web/node_modules/
+/web/dist/
+.vite/

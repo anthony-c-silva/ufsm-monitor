@@ -1,12 +1,14 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  LayoutDashboard, Server, SlidersHorizontal, Activity, Grid3x3, Users as UsersIcon,
+  LayoutDashboard, Server, Globe, Boxes, SlidersHorizontal, Activity, Grid3x3, Users as UsersIcon,
   LogOut, RefreshCw, Menu, KeyRound, ChevronDown, Network,
 } from "lucide-react";
 import { api } from "./api.js";
 import { isAuthenticated, clearSession, logout as doLogout, getUsername } from "./auth.js";
 import Overview from "./views/Overview.jsx";
-import Inventory from "./views/Inventory.jsx";
+import Probes from "./views/Probes.jsx";
+import Destinos from "./views/Destinos.jsx";
+import Groups from "./views/Groups.jsx";
 import Plans from "./views/Plans.jsx";
 import Series from "./views/Series.jsx";
 import Matrix from "./views/Matrix.jsx";
@@ -16,7 +18,9 @@ import ChangePassword from "./views/ChangePassword.jsx";
 
 const NAV = [
   { id: "overview", label: "Visão geral", Icon: LayoutDashboard, title: "Visão geral" },
-  { id: "inventory", label: "Inventário", Icon: Server, title: "Inventário — probes, destinos e grupos" },
+  { id: "probes", label: "Probes", Icon: Server, title: "Probes" },
+  { id: "destinos", label: "Destinos", Icon: Globe, title: "Destinos (allowlist)" },
+  { id: "groups", label: "Grupos", Icon: Boxes, title: "Grupos de probes" },
   { id: "plans", label: "Planos", Icon: SlidersHorizontal, title: "Planos de medição" },
   { id: "series", label: "Séries", Icon: Activity, title: "Séries temporais" },
   { id: "matrix", label: "Matriz & status", Icon: Grid3x3, title: "Matriz probe×destino e status" },
@@ -157,7 +161,9 @@ export default function App() {
 
         <div className="content">
           {view === "overview" && <Overview {...shared} />}
-          {view === "inventory" && <Inventory {...shared} />}
+          {view === "probes" && <Probes {...shared} />}
+          {view === "destinos" && <Destinos {...shared} />}
+          {view === "groups" && <Groups {...shared} />}
           {view === "plans" && <Plans {...shared} />}
           {view === "series" && <Series {...shared} />}
           {view === "matrix" && <Matrix {...shared} />}

@@ -80,7 +80,7 @@ export default function Overview({ notify, refreshKey }) {
           ) : (
             <div style={{ width: "100%", height: 240 }}>
               <ResponsiveContainer>
-                <AreaChart data={act} margin={{ top: 6, right: 16, bottom: 4, left: 0 }}>
+                <AreaChart data={act} margin={{ top: 6, right: 16, bottom: 28, left: 8 }}>
                   <defs>
                     <linearGradient id="gOk" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="#34d399" stopOpacity={0.5} />
@@ -93,15 +93,18 @@ export default function Overview({ notify, refreshKey }) {
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#26313f" />
                   <XAxis dataKey="t" tickFormatter={(t) => new Date(t).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                    minTickGap={40} tick={{ fontSize: 11, fill: "#93a2b6" }} stroke="#26313f" />
-                  <YAxis tick={{ fontSize: 11, fill: "#93a2b6" }} stroke="#26313f" width={36} allowDecimals={false} />
+                    minTickGap={40} tick={{ fontSize: 11, fill: "#93a2b6" }} stroke="#26313f"
+                    label={{ value: "Horário (últimas 24h)", position: "insideBottom", offset: -12, fill: "#93a2b6", fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11, fill: "#93a2b6" }} stroke="#26313f" width={54} allowDecimals={false}
+                    label={{ value: "Nº de medições", angle: -90, position: "insideLeft", offset: 6, fill: "#93a2b6", fontSize: 11, style: { textAnchor: "middle" } }} />
                   <Tooltip
                     labelFormatter={(t) => new Date(t).toLocaleString("pt-BR")}
+                    formatter={(value, name) => [`${value} medições`, name]}
                     contentStyle={{ background: "#161d28", border: "1px solid #26313f", borderRadius: 8, color: "#e7edf5" }}
                     labelStyle={{ color: "#93a2b6" }} itemStyle={{ color: "#e7edf5" }} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Area type="monotone" dataKey="success" name="sucesso" stackId="1" stroke="#34d399" fill="url(#gOk)" isAnimationActive={false} />
-                  <Area type="monotone" dataKey="error" name="falha" stackId="1" stroke="#f87171" fill="url(#gErr)" isAnimationActive={false} />
+                  <Legend verticalAlign="top" height={24} wrapperStyle={{ fontSize: 11 }} />
+                  <Area type="monotone" dataKey="success" name="sucesso" stroke="#34d399" fill="url(#gOk)" fillOpacity={1} isAnimationActive={false} />
+                  <Area type="monotone" dataKey="error" name="falha" stroke="#f87171" fill="url(#gErr)" fillOpacity={1} isAnimationActive={false} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>

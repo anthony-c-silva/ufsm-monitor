@@ -108,14 +108,16 @@ export default function Series({ notify, refreshKey }) {
           ) : (
             <div style={{ width: "100%", height: 380 }}>
               <ResponsiveContainer>
-                <LineChart data={data} margin={{ top: 8, right: 20, bottom: 8, left: 4 }}>
+                <LineChart data={data} margin={{ top: 8, right: 20, bottom: 28, left: 8 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#26313f" />
                   <XAxis
                     dataKey="t"
                     tickFormatter={(t) => new Date(t).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                     minTickGap={40} tick={{ fontSize: 11, fill: "#93a2b6" }} stroke="#26313f"
+                    label={{ value: `Horário (últimas ${hours}h)`, position: "insideBottom", offset: -12, fill: "#93a2b6", fontSize: 11 }}
                   />
-                  <YAxis tick={{ fontSize: 11, fill: "#93a2b6" }} stroke="#26313f" width={64} />
+                  <YAxis tick={{ fontSize: 11, fill: "#93a2b6" }} stroke="#26313f" width={64}
+                    label={{ value: unitLabel(field) || "valor", angle: -90, position: "insideLeft", offset: 8, fill: "#93a2b6", fontSize: 11, style: { textAnchor: "middle" } }} />
                   <Tooltip
                     labelFormatter={(t) => new Date(t).toLocaleString("pt-BR")}
                     formatter={(v) => fmtValue(type, field, v)}
@@ -123,7 +125,7 @@ export default function Series({ notify, refreshKey }) {
                     labelStyle={{ color: "#93a2b6" }}
                     itemStyle={{ color: "#e7edf5" }}
                   />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: 11 }} />
                   {keys.map((k, i) => (
                     <Line key={k} type="monotone" dataKey={k} stroke={PALETTE[i % PALETTE.length]}
                       dot={false} strokeWidth={2} connectNulls isAnimationActive={false} />

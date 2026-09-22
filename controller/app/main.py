@@ -238,6 +238,23 @@ def list_targets(db: Session = Depends(get_db)):
     return [_target_dict(t) for t in db.query(models.Target).all()]
 
 
+@app.put("/targets/{target_id}")
+def update_target(target_id: int, body: TargetIn, db: Session = Depends(get_db)):
+    """Edita um destino pelo id (nome/tipo/endereço).
+
+    Diferente do POST /targets (que faz upsert por nome), aqui a identidade é o
+    id, então renomear o destino atualiza o mesmo registro em vez de criar outro.
+    """
+    t = db.get(models.Target, target_id)
+    if t is None:
+        raise HTTPException(status_code=404, detail="destino não encontrado")
+    t.name = body.name
+    t.kind = body.kind
+    t.address = body.address
+    db.commit()
+    return _target_dict(t)
+
+
 # --------------------------------------------------------------------------
 # Groups
 # --------------------------------------------------------------------------
@@ -297,6 +314,43 @@ def get_plan(plan_id: str, db: Session = Depends(get_db)):
     if row is None:
         raise HTTPException(status_code=404, detail="plano não encontrado")
     return {"plan_id": row.plan_id, "revision": row.revision, "enabled": row.enabled, "spec": row.spec}
+
+
+@app.put("/plans/{plan_id}")
+def update_plan(plan_id: str, plan: Plan, db: Session = Depends(get_db)):
+    """Edita um plano existente.
+
+    Política de segurança: como o plano pode estar habilitado e rodando no
+    scheduler, ao salvar uma edição ele é SEMPRE desabilitado e a revisão é
+    incrementada. O usuário reativa manualmente depois de revisar. Assim o
+    scheduler para antes de a nova especificação entrar em vigor.
+    """
+    row = db.get(models.Plan, plan_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="plano não encontrado")
+    if plan.plan_id != plan_id:
+        raise HTTPException(status_code=400, detail="plan_id do corpo difere da URL")
+
+    errors = planning.validate(plan, db)
+    if errors:
+        raise HTTPException(status_code=400, detail={"errors": errors})
+
+    new_revision = (row.revision or 0) + 1
+    spec = plan.model_dump()
+    spec["revision"] = new_revision
+    spec["enabled"] = False
+    row.revision = new_revision
+    row.enabled = False
+    row.spec = spec
+    db.commit()
+
+    updated = Plan(**row.spec)
+    return {
+        "stored": True,
+        "enabled": False,
+        "revision": new_revision,
+        "expansion": planning.summarize(updated, planning.expand(updated, db)),
+    }
 
 
 @app.post("/plans/{plan_id}/run")
