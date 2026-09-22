@@ -131,14 +131,15 @@ export default function App() {
             <h2>{current.title}</h2>
           </div>
           <div className="right">
-            <button
-              className="iconbtn"
-              title={autoRefresh ? "Auto-atualização ligada (30s)" : "Auto-atualização desligada"}
-              onClick={() => setAutoRefresh((v) => !v)}
-              style={autoRefresh ? { color: "#3d8bfd", borderColor: "#3d8bfd" } : undefined}
+            <select
+              className={"auto-refresh" + (autoRefresh ? " on" : "")}
+              value={autoRefresh ? "on" : "off"}
+              onChange={(e) => setAutoRefresh(e.target.value === "on")}
+              title="Atualiza os painéis automaticamente a cada 30 segundos"
             >
-              <RefreshCw size={16} />
-            </button>
+              <option value="off">Auto-atualizar: desligada</option>
+              <option value="on">Auto-atualizar: ligada (30s)</option>
+            </select>
             <button className="btn small" onClick={refresh}><RefreshCw size={14} /> Atualizar</button>
             <div className="usermenu">
               <button className="trigger" onClick={() => setMenuOpen((v) => !v)}>

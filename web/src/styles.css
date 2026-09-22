@@ -157,6 +157,10 @@ select {
 select:hover { border-color: var(--border-2); background-color: var(--surface-3); }
 select:focus { background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%233d8bfd' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>"); }
 select option { background: var(--surface); color: var(--text); }
+/* Select compacto do topo (auto-atualização) — mesma altura do botão .btn small */
+.topbar select.auto-refresh { padding: 5px 30px 5px 10px; font-size: 12px; background-color: var(--surface); border-color: var(--border); }
+.topbar select.auto-refresh:hover { background-color: var(--surface-2); }
+.topbar select.auto-refresh.on { border-color: var(--primary); color: #cfe1ff; background-color: var(--primary-soft); }
 /* Alinha os campos pelo topo: assim a legenda (.hint) cresce pra baixo sem desalinhar
    os controles da linha. Botões soltos no grid ganham um recuo p/ cair na linha dos campos. */
 .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; align-items: start; }
