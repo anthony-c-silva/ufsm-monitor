@@ -2,12 +2,12 @@
 W = 1600
 parts = [
     ("Administrador", "[Equipe de Redes]", "#08427b"),
-    ("Controlador", "+ Scheduler", "#1168bd"),
+    ("Controlador", "+ Agendador", "#1168bd"),
     ("RabbitMQ", "[Broker AMQP]", "#1168bd"),
-    ("Agente (probe)", "[Go]", "#2f7d4f"),
+    ("Agente (sonda)", "[Go]", "#2f7d4f"),
     ("Servico de Ingestao", "[Python]", "#1168bd"),
     ("PostgreSQL /", "TimescaleDB", "#0e5a9c"),
-    ("Grafana", "[Dashboards]", "#1168bd"),
+    ("Painel web", "[React / Vite]", "#1168bd"),
 ]
 n = len(parts)
 xs = [round(120 + i * (1360/(n-1))) for i in range(n)]
@@ -15,15 +15,15 @@ BOXW, BOXH, BOXY = 168, 46, 24
 top = BOXY + BOXH
 
 svg = []
-svg.append(f'<svg viewBox="0 0 {W} 740" xmlns="http://www.w3.org/2000/svg" font-family="Helvetica, Arial, sans-serif">')
-svg.append('<rect x="0" y="0" width="%d" height="740" fill="white"/>' % W)
+svg.append(f'<svg viewBox="0 0 {W} 790" xmlns="http://www.w3.org/2000/svg" font-family="Helvetica, Arial, sans-serif">')
+svg.append('<rect x="0" y="0" width="%d" height="790" fill="white"/>' % W)
 svg.append('<defs><marker id="arw" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="userSpaceOnUse">'
            '<path d="M0,0 L8,3 L0,6 Z" fill="#33475b"/></marker></defs>')
 svg.append(f'<text x="{W//2}" y="16" text-anchor="middle" font-size="15" font-weight="bold" fill="#12467b">'
-           'Fluxo de execucao — de um plano ao dashboard (diagrama de sequencia)</text>')
+           'Fluxo de execucao — de um plano ao painel web (diagrama de sequencia)</text>')
 
 # participantes + lifelines
-LIFE_BOTTOM = 700
+LIFE_BOTTOM = 750
 for (l1, l2, color), x in zip(parts, xs):
     svg.append(f'<rect x="{x-BOXW//2}" y="{BOXY}" width="{BOXW}" height="{BOXH}" rx="8" fill="{color}"/>')
     svg.append(f'<text x="{x}" y="{BOXY+19}" text-anchor="middle" font-size="11.5" font-weight="bold" fill="white">{l1}</text>')
@@ -53,21 +53,22 @@ def loop(y1, y2, label):
     svg.append(f'<text x="{x1+80}" y="{y1+12}" font-size="9" fill="#176a30">{label}</text>')
 
 Y=112; S=47
-loop(180, 566, "a cada period_seconds — o scheduler dispara automaticamente")
+loop(180, 566, "a cada period_seconds — o agendador dispara automaticamente")
 msg(0,1, Y, "1. cria o plano (POST /plans)  |  HTTPS"); Y+=S
 selfmsg(1, Y, "2. valida e armazena o plano (PostgreSQL)"); Y+=S
-selfmsg(1, Y, "3. Scheduler: expande a malha em tarefas (n(n-1))", note="iperf3 -> serializado: 1 teste por probe de cada vez"); Y+=S
+selfmsg(1, Y, "3. Agendador: expande o plano em tarefas", note="iperf3 -> coordenado: uma sonda em um teste de vazao por vez"); Y+=S
 msg(1,2, Y, "4. publica tarefas  |  AMQP"); Y+=S
-msg(2,3, Y, "5. entrega comando ao probe  |  AMQP"); Y+=S
-selfmsg(3, Y, "6. executa a medicao (ICMP/DNS/HTTP/iperf3)", note="contra outro probe ou destino externo"); Y+=S
+msg(2,3, Y, "5. entrega a tarefa a sonda  |  AMQP"); Y+=S
+selfmsg(3, Y, "6. executa a medicao (ICMP/DNS/HTTP/iperf3)", note="contra outra sonda ou destino externo"); Y+=S
 selfmsg(3, Y, "7. grava na outbox SQLite", note="persiste ANTES de publicar -> nada se perde"); Y+=S
 msg(3,2, Y, "8. publica resultado (+ publisher confirm)  |  AMQP"); Y+=S
 msg(2,4, Y, "9. entrega resultado  |  AMQP"); Y+=S
 msg(4,5, Y, "10. grava serie temporal  |  SQL"); Y+=S
 Y+=18
-msg(0,6, Y, "11. abre o dashboard  |  HTTPS"); Y+=S
-msg(6,5, Y, "12. consulta as series  |  SQL"); Y+=S
-msg(6,0, Y, "13. graficos + matriz probe x destino", dashed=True)
+msg(0,6, Y, "11. abre o painel web  |  HTTPS"); Y+=S
+msg(6,1, Y, "12. consulta a API do controlador  |  HTTPS"); Y+=S
+msg(1,5, Y, "13. consulta as series  |  SQL"); Y+=S
+msg(6,0, Y, "14. graficos + matriz sonda x destino", dashed=True)
 
 svg.append('</svg>')
 open("fluxo-execucao-sequencia.svg","w",encoding="utf-8").write("\n".join(svg))

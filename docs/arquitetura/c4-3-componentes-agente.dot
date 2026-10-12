@@ -1,16 +1,16 @@
 digraph C4_Componentes_Agente {
   rankdir=TB; compound=true;
   graph [fontname="Helvetica", labelloc="t", fontsize=16, fontcolor="#1a1a1a",
-         label="Modelo C4 - Nivel 3: Componentes do Agente (probe)\nPlataforma Distribuida de Monitoramento Ativo da Rede da UFSM",
+         label="Modelo C4 - Nivel 3: Componentes do Agente (sonda)\nPlataforma Distribuida de Monitoramento Ativo da Rede da UFSM",
          nodesep=0.4, ranksep=0.65];
   node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=9, margin="0.13,0.08",
         fillcolor="#1168bd", fontcolor="white"];
 
   rabbit   [label=<<b>RabbitMQ</b><br/><font point-size="7.5" color="white">[Broker AMQP]</font>>, fillcolor="#8b8b8b"];
-  externos [label=<<b>Outros probes e destinos externos</b><br/><font point-size="7.5" color="white">malha / estrela / externos</font>>, fillcolor="#8b8b8b"];
+  externos [label=<<b>Outras sondas e destinos externos</b><br/><font point-size="7.5" color="white">malha / estrela / externos</font>>, fillcolor="#8b8b8b"];
 
   subgraph cluster_agent {
-    label="Agente (probe)   [Go / Raspberry Pi]";
+    label="Agente (sonda)   [Go / Raspberry Pi]";
     labelloc="t"; fontname="Helvetica"; fontsize=11; fontcolor="#3b5064";
     style="rounded,dashed"; color="#8fa3b5"; margin=16;
 
@@ -32,7 +32,7 @@ digraph C4_Componentes_Agente {
     }
 
     subgraph cluster_servers {
-      label="Servicos de destino (o probe OFERECE)";
+      label="Servicos de destino (a sonda OFERECE)";
       labelloc="t"; fontsize=8.5; fontcolor="#176a30"; style="rounded"; color="#4fa06a";
       s_http  [label=<<b>Servidor HTTP</b><br/><font point-size="7" color="white">/health /services</font>>, fillcolor="#2f7d4f"];
       s_iperf [label=<<b>Servidor iperf3</b><br/><font point-size="7" color="white">iperf3 -s :5201</font>>, fillcolor="#2f7d4f"];
@@ -54,5 +54,5 @@ digraph C4_Componentes_Agente {
   // ----- medicao (tracejado verde) -----
   edge [color="#1e7d3a", fontcolor="#176a30", style=dashed, penwidth=1.5, arrowsize=0.7];
   c_iperf -> externos [ltail=cluster_clients, label="mede (ICMP/DNS/HTTP/traceroute/iperf3)"];
-  externos -> s_iperf [lhead=cluster_servers, label="e medido por outros probes"];
+  externos -> s_iperf [lhead=cluster_servers, label="e medido por outras sondas"];
 }

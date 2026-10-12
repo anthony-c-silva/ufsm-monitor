@@ -38,3 +38,9 @@ node_modules/
 /web/node_modules/
 /web/dist/
 .vite/
+
+# Revisao bibliografica: PDFs de artigos e livros tem direitos autorais das
+# editoras e NAO devem ir para o repositorio publico. As RFCs (.txt/.md) e as
+# anotacoes podem ser versionadas.
+/docs/revisao-bibliografica/*.pdf
+/docs/revisao-bibliografica/*.PDF
