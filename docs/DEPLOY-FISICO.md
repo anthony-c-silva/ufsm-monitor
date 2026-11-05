@@ -103,6 +103,7 @@ Entre por SSH no Pi (`ssh pi@<IP-PI>`) e:
 ```bash
 sudo apt update
 sudo apt install -y fping iperf3 dnsutils mtr-tiny traceroute
+sudo systemctl disable --now iperf3   # o pacote sobe um iperf3 próprio na porta 5201; o agente já mantém o dele
 ```
 
 **3.2** Usuário de serviço + binário:

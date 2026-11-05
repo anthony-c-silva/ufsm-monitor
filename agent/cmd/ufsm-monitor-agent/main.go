@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -128,7 +129,7 @@ func serve() error {
 
 	// Integracao com RabbitMQ (Fase 3): consumir comandos e publicar resultados.
 	if cfg.AMQPURL != "" && cfg.AMQPURL != "off" {
-		log.Printf("AMQP habilitado: %s", cfg.AMQPURL)
+		log.Printf("AMQP habilitado: %s", redactURL(cfg.AMQPURL))
 		wg.Add(1)
 		go func() { defer wg.Done(); runConsumer(ctx, cfg, probeID, ob) }()
 		wg.Add(1)
@@ -476,4 +477,13 @@ func sleepCtx(ctx context.Context, d time.Duration) bool {
 	case <-time.After(d):
 		return false
 	}
+}
+
+// redactURL esconde a senha da URL AMQP antes de registrá-la no log.
+func redactURL(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return "(URL AMQP inválida)"
+	}
+	return u.Redacted()
 }
