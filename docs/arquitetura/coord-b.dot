@@ -1,0 +1,12 @@
+// Conflito por enlace compartilhado. Gerar: dot -Tpdf coord-b.dot -o coord-b.pdf
+graph CoordB {
+  rankdir=LR; ordering=out;
+  graph [fontname="Liberation Sans", nodesep=0.45, ranksep=0.75, pad=0.1, margin=0];
+  node  [shape=circle, style=filled, fontname="Liberation Sans", fontsize=12, width=0.6, fixedsize=true, penwidth=1.2, fillcolor="#d5e8d4", color="#82b366"];
+  edge  [fontname="Liberation Sans", fontsize=10, penwidth=1.2];
+  R1 [label="", shape=box, width=0.35, height=0.35, fillcolor="#d9d9d9", color="#666666"];
+  R2 [label="", shape=box, width=0.35, height=0.35, fillcolor="#d9d9d9", color="#666666"];
+  A1 -- R1; A2 -- R1;
+  R1 -- R2 [label="enlace compartilhado", color="#c8553d", fontcolor="#c8553d", penwidth=4];
+  R2 -- B1; R2 -- B2;
+}

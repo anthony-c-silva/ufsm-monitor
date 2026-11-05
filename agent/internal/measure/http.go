@@ -64,8 +64,15 @@ func HTTP(ctx context.Context, url, method string, timeoutMs int) Result {
 	}
 	req = req.WithContext(httptrace.WithClientTrace(cctx, trace))
 
+	// Transporte proprio por medicao, sem keep-alive: impede que uma conexao
+	// aberta por uma medicao anterior seja reaproveitada, o que zeraria as
+	// fases de conexao e TLS. Cada execucao mede o acesso completo.
+	tr := http.DefaultTransport.(*http.Transport).Clone()
+	tr.DisableKeepAlives = true
+	defer tr.CloseIdleConnections()
+
 	reqStart = time.Now()
-	resp, err := http.DefaultTransport.RoundTrip(req)
+	resp, err := tr.RoundTrip(req)
 	if err != nil {
 		res.DNSMs = ms(dnsDur)
 		res.TCPConnectMs = ms(connDur)

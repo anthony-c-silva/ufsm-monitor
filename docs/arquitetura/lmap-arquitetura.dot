@@ -1,0 +1,33 @@
+// Elementos do LMAP (adaptado da RFC 7594, Figura 1). Gerar: dot -Tpdf lmap-arquitetura.dot -o lmap-arquitetura.pdf
+digraph LMAP {
+  rankdir=TB; compound=true; newrank=true;
+  graph [fontname="Liberation Sans", nodesep=0.5, ranksep=0.55, pad=0.05, margin=0];
+  node  [shape=box, style="rounded,filled", fontname="Liberation Sans", fontsize=11, margin="0.16,0.08", penwidth=1.2];
+  edge  [fontname="Liberation Sans", fontsize=9, color="#333333", fontcolor="#222222", penwidth=1.1, arrowsize=0.8];
+
+  subgraph cluster_lmap {
+    label="Escopo do LMAP"; labeljust="l"; fontname="Liberation Sans"; fontsize=10; fontcolor="#444444";
+    style="rounded,dashed"; color="#6c8ebf"; margin=14;
+    ma   [label=<<b>Agente de medição</b><br/><font point-size="9">executa as tarefas de medição</font>>, fillcolor="#d5e8d4", color="#82b366"];
+    ctrl [label=<<b>Controlador</b><br/><font point-size="9">define tarefas e cronogramas</font>>, fillcolor="#dae8fc", color="#6c8ebf"];
+    col  [label=<<b>Coletor</b><br/><font point-size="9">recebe os relatos</font>>, fillcolor="#dae8fc", color="#6c8ebf"];
+  }
+  mp   [label=<<b>Par de medição</b><br/><font point-size="9">responde ao tráfego de medição</font>>, fillcolor="#f5f5f5", color="#666666"];
+  boot [label="Inicializador", fillcolor="#ffffff", color="#999999", fontcolor="#555555"];
+  sub  [label=<Base de parâmetros<br/>do assinante>, fillcolor="#ffffff", color="#999999", fontcolor="#555555"];
+  rep  [label=<Repositório<br/>de resultados>, fillcolor="#ffffff", color="#999999", fontcolor="#555555"];
+  ana  [label=<Ferramentas<br/>de análise>, fillcolor="#ffffff", color="#999999", fontcolor="#555555"];
+
+  { rank=same; mp; ma; }
+  { rank=same; ctrl; col; }
+  { rank=same; boot; sub; ana; rep; }
+
+  ctrl -> ma  [label=" instrução\n (canal de controle)"];
+  ma -> col   [label=" relato\n (canal de relato)"];
+  col -> rep;
+  rep -> ana;
+  sub -> ana;
+  sub -> ctrl [style=dotted];
+  boot -> ma  [style=dotted, constraint=false];
+  ma -> mp    [label="tráfego de medição", style=dashed, dir=both, color="#2d7a3e", fontcolor="#2d7a3e"];
+}

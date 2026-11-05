@@ -1,0 +1,10 @@
+// Conflito por sonda em comum. Gerar: dot -Tpdf coord-a.dot -o coord-a.pdf
+graph CoordA {
+  rankdir=TB;
+  graph [fontname="Liberation Sans", nodesep=0.9, ranksep=0.6, pad=0.1, margin=0];
+  node  [shape=circle, style=filled, fontname="Liberation Sans", fontsize=12, width=0.6, fixedsize=true, penwidth=1.2, fillcolor="#d5e8d4", color="#82b366"];
+  edge  [fontname="Liberation Sans", fontsize=10, penwidth=1.2];
+  { rank=same; A; B; }
+  A -- B [label="teste em andamento", color="#087e8b", fontcolor="#087e8b", penwidth=2.8];
+  A -- C [label=" aguarda", style=dashed, color="#5c6b7a", fontcolor="#5c6b7a"];
+}

@@ -1,58 +1,38 @@
+// Modelo C4 - nivel 3 (componentes do agente). Gerar: dot -Tpdf c4-3-componentes-agente.dot -o c4-3-componentes-agente.pdf
 digraph C4_Componentes_Agente {
-  rankdir=TB; compound=true;
-  graph [fontname="Helvetica", labelloc="t", fontsize=16, fontcolor="#1a1a1a",
-         label="Modelo C4 - Nivel 3: Componentes do Agente (sonda)\nPlataforma Distribuida de Monitoramento Ativo da Rede da UFSM",
-         nodesep=0.4, ranksep=0.65];
-  node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=9, margin="0.13,0.08",
-        fillcolor="#1168bd", fontcolor="white"];
+  rankdir=TB; compound=true; newrank=true;
+  graph [fontname="Liberation Sans", nodesep=0.4, ranksep=0.5, pad=0.05, margin=0];
+  node  [shape=box, style="rounded,filled", fontname="Liberation Sans", fontsize=11,
+         margin="0.14,0.07", penwidth=1.2, fillcolor="#d5e8d4", color="#82b366"];
+  edge  [fontname="Liberation Sans", fontsize=9, color="#333333", fontcolor="#222222",
+         penwidth=1.1, arrowsize=0.8];
 
-  rabbit   [label=<<b>RabbitMQ</b><br/><font point-size="7.5" color="white">[Broker AMQP]</font>>, fillcolor="#8b8b8b"];
-  externos [label=<<b>Outras sondas e destinos externos</b><br/><font point-size="7.5" color="white">malha / estrela / externos</font>>, fillcolor="#8b8b8b"];
+  rabbit [label=<<b>Barramento de mensagens</b><br/><font point-size="9">[RabbitMQ]</font>>, fillcolor="#dae8fc", color="#6c8ebf"];
 
-  subgraph cluster_agent {
-    label="Agente (sonda)   [Go / Raspberry Pi]";
-    labelloc="t"; fontname="Helvetica"; fontsize=11; fontcolor="#3b5064";
-    style="rounded,dashed"; color="#8fa3b5"; margin=16;
+  subgraph cluster_agente {
+    label="Agente executado na sonda [Go]"; labeljust="r"; fontname="Liberation Sans"; fontsize=10; fontcolor="#444444";
+    style="rounded,dashed"; color="#82b366"; margin=14;
 
-    consumer  [label=<<b>Consumidor de comandos</b><br/><font point-size="7.5" color="white">internal/broker (AMQP)</font>>];
-    spool     [label=<<b>Watcher de spool</b><br/><font point-size="7.5" color="white">tarefas locais (fallback)</font>>];
-    executor  [label=<<b>Executor</b><br/><font point-size="7.5" color="white">internal/measure - despacha por tipo</font>>];
-    inventory [label=<<b>Inventario</b><br/><font point-size="7.5" color="white">sysinfo periodico</font>>];
-    outbox    [label=<<b>Outbox</b><br/><font point-size="7.5" color="white">SQLite WAL - tolerancia a falha</font>>, shape=cylinder, fillcolor="#0e5a9c"];
-    publisher [label=<<b>Publicador</b><br/><font point-size="7.5" color="white">internal/broker - publisher confirms</font>>];
-
-    subgraph cluster_clients {
-      label="Clientes de medicao (executor)";
-      labelloc="t"; fontsize=8.5; fontcolor="#3b5064"; style="rounded"; color="#c9d6e5";
-      c_icmp  [label=<<b>ICMP</b><br/><font point-size="7" color="white">fping</font>>];
-      c_dns   [label=<<b>DNS</b><br/><font point-size="7" color="white">dig</font>>];
-      c_http  [label=<<b>HTTP</b><br/><font point-size="7" color="white">httptrace</font>>];
-      c_tr    [label=<<b>Traceroute</b><br/><font point-size="7" color="white">mtr</font>>];
-      c_iperf [label=<<b>iperf3</b><br/><font point-size="7" color="white">cliente</font>>];
-    }
-
-    subgraph cluster_servers {
-      label="Servicos de destino (a sonda OFERECE)";
-      labelloc="t"; fontsize=8.5; fontcolor="#176a30"; style="rounded"; color="#4fa06a";
-      s_http  [label=<<b>Servidor HTTP</b><br/><font point-size="7" color="white">/health /services</font>>, fillcolor="#2f7d4f"];
-      s_iperf [label=<<b>Servidor iperf3</b><br/><font point-size="7" color="white">iperf3 -s :5201</font>>, fillcolor="#2f7d4f"];
-      s_dns   [label=<<b>Servidor DNS</b><br/><font point-size="7" color="white">miekg/dns :53</font>>, fillcolor="#2f7d4f"];
-    }
+    cliente  [label=<<b>Cliente do barramento</b><br/><font point-size="9">Recebe tarefas e publica resultados</font>>];
+    executor [label=<<b>Executor</b><br/><font point-size="9">Seleciona a medição pelo tipo de teste</font>>];
+    medicao  [label=<<b>Módulos de medição</b><br/><font point-size="9">fping, iperf3, dig, mtr e cliente HTTP</font>>];
+    fila     [label=<<b>Fila local</b><br/><font point-size="9">[SQLite]</font>>, shape=cylinder, style=filled, fillcolor="#fff2cc", color="#d6b656"];
+    saude    [label=<<b>Servidor de saúde</b><br/><font point-size="9">Estado do agente (HTTP)</font>>];
+    destino  [label=<<b>Serviços de destino</b><br/><font point-size="9">Servidores iperf3 e DNS</font>>];
   }
 
-  // ----- controle e dados (linha cheia) -----
-  edge [fontname="Helvetica", fontsize=7.5, color="#5a6b7b", fontcolor="#33475b", penwidth=1.1];
-  rabbit -> consumer   [label="comandos (AMQP)"];
-  consumer -> executor [label="tarefa"];
-  spool -> executor    [label="tarefa local"];
-  executor -> c_http   [lhead=cluster_clients, label="executa"];
-  executor -> outbox   [label="persiste (antes de publicar)"];
-  inventory -> outbox  [label="persiste inventario"];
-  outbox -> publisher  [label="le pendentes"];
-  publisher -> rabbit  [label="resultados (AMQP + confirm)"];
+  outros [label=<<b>Outras sondas e destinos externos</b>>, fillcolor="#f5f5f5", color="#666666"];
 
-  // ----- medicao (tracejado verde) -----
-  edge [color="#1e7d3a", fontcolor="#176a30", style=dashed, penwidth=1.5, arrowsize=0.7];
-  c_iperf -> externos [ltail=cluster_clients, label="mede (ICMP/DNS/HTTP/traceroute/iperf3)"];
-  externos -> s_iperf [lhead=cluster_servers, label="e medido por outras sondas"];
+  { rank=same; executor; fila; }
+  { rank=same; medicao; saude; destino; }
+
+  rabbit  -> cliente  [label=" tarefas e resultados (AMQP)", dir=both];
+  cliente -> executor [label=" tarefa"];
+  executor -> medicao [label=" executa"];
+  executor -> fila    [label="grava resultado"];
+  fila -> cliente     [label="resultados\npendentes", constraint=false];
+
+  edge [style=dashed, color="#2d7a3e", fontcolor="#2d7a3e"];
+  medicao -> outros   [label=" mede"];
+  outros  -> destino  [label=" medem"];
 }
