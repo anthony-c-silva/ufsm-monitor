@@ -250,3 +250,91 @@ def probe_activity(minutes=30):
          "runs": int(r["runs"]), "ok": int(r["ok"])}
         for r in rows
     ]
+
+
+# --------------------------------------------------------------------------
+# Saúde das sondas (inventário 'sysinfo' que o agente envia a cada 60 s)
+# --------------------------------------------------------------------------
+HEALTH_KEYS = [
+    "cpu_temp_c", "cpu_freq_mhz", "cpu_usage_pct", "throttled", "throttled_now",
+    "throttled_since_boot", "uptime_seconds", "link_speed_mbps", "agent_cpu_pct",
+    "agent_rss_kb", "mem_total_kb", "mem_available_kb", "disk_total_bytes",
+    "disk_free_bytes", "load_avg", "time_sync", "agent_version", "ip_address",
+]
+
+
+def _health_summary(observed_at, r):
+    if isinstance(r, str):
+        try:
+            r = json.loads(r)
+        except Exception:  # noqa: BLE001
+            r = {}
+    r = r or {}
+    out = {k: r.get(k) for k in HEALTH_KEYS}
+    mt, ma = r.get("mem_total_kb"), r.get("mem_available_kb")
+    out["mem_used_pct"] = round(100 * (1 - ma / mt), 1) if mt and ma is not None else None
+    dt, df = r.get("disk_total_bytes"), r.get("disk_free_bytes")
+    out["disk_used_pct"] = round(100 * (1 - df / dt), 1) if dt and df is not None else None
+    out["observed_at"] = _iso(observed_at)
+    return out
+
+
+def probe_health_latest(minutes=10, probe_id=None):
+    """Último inventário de cada sonda (ou de uma sonda) dentro da janela."""
+    sql = (
+        "SELECT DISTINCT ON (probe_id) probe_id, observed_at, raw_payload->'result' AS r "
+        "FROM measurement_runs "
+        "WHERE measurement_type = 'sysinfo' AND status = 'success' "
+        "AND observed_at > now() - make_interval(mins => :m) "
+        + ("AND probe_id = :p " if probe_id else "")
+        + "ORDER BY probe_id, observed_at DESC"
+    )
+    params = {"m": int(minutes)}
+    if probe_id:
+        params["p"] = probe_id
+    with engine.connect() as conn:
+        if not _table_exists(conn, "measurement_runs"):
+            return {}
+        rows = conn.execute(text(sql), params).mappings().all()
+    return {row["probe_id"]: _health_summary(row["observed_at"], row["r"]) for row in rows}
+
+
+def _num(key):
+    # chaves fixas (nunca vindas do cliente)
+    return f"(raw_payload->'result'->>'{key}')::double precision"
+
+
+def probe_health_series(probe_id, hours=24, bucket_minutes=5):
+    """Série temporal de temperatura, CPU, memória e consumo do agente."""
+    sql = (
+        "SELECT time_bucket(make_interval(mins => :b), observed_at) AS t, "
+        f"avg({_num('cpu_temp_c')}) AS temp_avg, max({_num('cpu_temp_c')}) AS temp_max, "
+        f"avg({_num('cpu_usage_pct')}) AS cpu_pct, "
+        f"avg(100 * (1 - {_num('mem_available_kb')} / NULLIF({_num('mem_total_kb')}, 0))) AS mem_pct, "
+        "avg((raw_payload->'result'->'load_avg'->>0)::double precision) AS load1, "
+        f"avg({_num('cpu_freq_mhz')}) AS freq_mhz, "
+        f"avg({_num('agent_cpu_pct')}) AS agent_cpu_pct, "
+        f"avg({_num('agent_rss_kb')}) / 1024 AS agent_rss_mb, "
+        "bool_or(jsonb_array_length(COALESCE(raw_payload->'result'->'throttled_now', '[]'::jsonb)) > 0) AS throttled "
+        "FROM measurement_runs "
+        "WHERE measurement_type = 'sysinfo' AND status = 'success' AND probe_id = :p "
+        "AND observed_at > now() - make_interval(hours => :h) "
+        "GROUP BY t ORDER BY t ASC"
+    )
+    with engine.connect() as conn:
+        if not _table_exists(conn, "measurement_runs"):
+            return []
+        rows = conn.execute(
+            text(sql), {"b": int(bucket_minutes), "h": int(hours), "p": probe_id}
+        ).mappings().all()
+
+    def rnd(v, n=1):
+        return round(float(v), n) if v is not None else None
+
+    return [
+        {"t": _iso(r["t"]), "temp_avg": rnd(r["temp_avg"]), "temp_max": rnd(r["temp_max"]),
+         "cpu_pct": rnd(r["cpu_pct"]), "mem_pct": rnd(r["mem_pct"]), "load1": rnd(r["load1"], 2),
+         "freq_mhz": rnd(r["freq_mhz"], 0), "agent_cpu_pct": rnd(r["agent_cpu_pct"]),
+         "agent_rss_mb": rnd(r["agent_rss_mb"]), "throttled": bool(r["throttled"])}
+        for r in rows
+    ]

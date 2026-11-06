@@ -60,6 +60,7 @@ export const api = {
   activity: (q = {}) => req("/stats/activity" + qs(q)),
   recent: (limit = 10) => req("/measurements/recent" + qs({ limit })),
   probesStatus: (minutes = 30) => req("/probes/status" + qs({ minutes })),
+  probeHealth: (id, q = {}) => req("/probes/" + encodeURIComponent(id) + "/health" + qs(q)),
 
   // inventário
   probes: () => req("/probes"),

@@ -35,6 +35,18 @@ type SysinfoResult struct {
 	TimeSync       string            `json:"time_sync"`
 	Deployment     string            `json:"deployment,omitempty"`
 	VLAN           string            `json:"vlan,omitempty"`
+
+	// Saude da sonda (sysinfo_saude.go).
+	CPUTempC           *float64 `json:"cpu_temp_c,omitempty"`
+	CPUFreqMHz         *float64 `json:"cpu_freq_mhz,omitempty"`
+	CPUUsagePct        *float64 `json:"cpu_usage_pct,omitempty"`
+	Throttled          string   `json:"throttled,omitempty"`
+	ThrottledNow       []string `json:"throttled_now,omitempty"`
+	ThrottledSinceBoot []string `json:"throttled_since_boot,omitempty"`
+	UptimeSeconds      int64    `json:"uptime_seconds,omitempty"`
+	LinkSpeedMbps      int      `json:"link_speed_mbps,omitempty"`
+	AgentCPUPct        *float64 `json:"agent_cpu_pct,omitempty"`
+	AgentRSSKB         int64    `json:"agent_rss_kb,omitempty"`
 }
 
 // Sysinfo coleta o inventario do probe. Nenhum campo e fatal: em erro fica vazio.
@@ -71,6 +83,17 @@ func Sysinfo(_ context.Context, deployment, vlan string) Result {
 		Deployment:     deployment,
 		VLAN:           vlan,
 	}
+
+	res.CPUTempC = cpuTempC()
+	res.CPUFreqMHz = cpuFreqMHz()
+	res.CPUUsagePct, res.AgentCPUPct = cpuPercents()
+	if mask, ok := throttled(); ok {
+		res.Throttled = "0x" + strconv.FormatUint(mask, 16)
+		res.ThrottledNow, res.ThrottledSinceBoot = throttleFlags(mask)
+	}
+	res.UptimeSeconds = uptimeSeconds()
+	res.LinkSpeedMbps = linkSpeedMbps(iface)
+	res.AgentRSSKB = agentRSSKB()
 	return resOK(res, nil)
 }
 

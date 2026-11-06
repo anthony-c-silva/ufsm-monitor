@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Server } from "lucide-react";
+import { Plus, Pencil, Trash2, Server, HeartPulse, AlertTriangle } from "lucide-react";
 import { api } from "../api.js";
 import { SkeletonTable } from "../components/Skeleton.jsx";
 import Modal from "../components/Modal.jsx";
 import ConfirmDialog from "../components/ConfirmDialog.jsx";
+import ProbeHealth, { fmtUptime, tempClass, pctClass, throttleText } from "../components/ProbeHealth.jsx";
+import { fmtAgo, fmtTime } from "../format.js";
 
 const emptyProbe = { probe_id: "", hostname: "", address: "", deployment: "", vlan: "", active: true };
 
@@ -20,14 +22,23 @@ export default function Probes({ notify, refreshKey }) {
   const [toDelete, setToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
-  const load = () => {
-    setLoading(true);
-    return api.probes()
+  // modal de saúde da sonda
+  const [healthOf, setHealthOf] = useState(null);
+
+  // silent = atualização periódica (sem skeleton nem aviso de erro)
+  const load = (silent = false) => {
+    if (!silent) setLoading(true);
+    return api.probesStatus(10)
       .then(setProbes)
-      .catch((e) => notify("Falha ao carregar probes: " + e.message, "err"))
-      .finally(() => setLoading(false));
+      .catch((e) => { if (!silent) notify("Falha ao carregar probes: " + e.message, "err"); })
+      .finally(() => { if (!silent) setLoading(false); });
   };
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [refreshKey]);
+  useEffect(() => {
+    load();
+    const t = setInterval(() => load(true), 30000);
+    return () => clearInterval(t);
+    /* eslint-disable-next-line */
+  }, [refreshKey]);
 
   const openCreate = () => { setMode("create"); setForm({ ...emptyProbe }); };
   const openEdit = (p) => {
@@ -75,25 +86,41 @@ export default function Probes({ notify, refreshKey }) {
 
       <div className="card scroll-x">
         <table>
-          <thead><tr><th>probe_id</th><th>hostname</th><th>endereço</th><th>deployment</th><th>vlan</th><th>ativo</th><th></th></tr></thead>
+          <thead><tr><th>probe_id</th><th>estado</th><th>endereço</th><th>deployment</th><th>temperatura</th><th>CPU</th><th>memória</th><th>link</th><th>ligada há</th><th></th></tr></thead>
           <tbody>
-            {probes.map((p) => (
+            {probes.map((p) => {
+              const h = p.health || {};
+              const lim = h.throttled_now || [];
+              return (
               <tr key={p.probe_id}>
                 <td className="mono">{p.probe_id}</td>
-                <td>{p.hostname || "—"}</td>
+                <td>
+                  {!p.active ? <span className="badge muted">inativo</span>
+                    : p.online ? <span className="badge ok" title={fmtTime(p.last_seen)}>online</span>
+                    : <span className="badge err" title={p.last_seen ? fmtTime(p.last_seen) : "sem relato recente"}>offline</span>}
+                  {p.active && p.last_seen && <div className="muted" style={{ fontSize: 11 }}>{fmtAgo(p.last_seen)}</div>}
+                </td>
                 <td className="mono">{p.address || "—"}</td>
                 <td>{p.deployment || "—"}</td>
-                <td>{p.vlan || "—"}</td>
-                <td>{p.active ? <span className="badge ok">ativo</span> : <span className="badge muted">inativo</span>}</td>
+                <td>
+                  {h.cpu_temp_c != null ? <span className={"badge " + tempClass(h.cpu_temp_c)}>{h.cpu_temp_c.toFixed(1)} °C</span> : "—"}
+                  {lim.length > 0 && <span className="badge err" title={throttleText(lim)} style={{ marginLeft: 4 }}><AlertTriangle size={12} /></span>}
+                </td>
+                <td>{h.cpu_usage_pct != null ? <span className={"badge " + pctClass(h.cpu_usage_pct)}>{h.cpu_usage_pct.toFixed(0)}%</span> : "—"}</td>
+                <td>{h.mem_used_pct != null ? <span className={"badge " + pctClass(h.mem_used_pct, 80, 92)}>{h.mem_used_pct.toFixed(0)}%</span> : "—"}</td>
+                <td>{h.link_speed_mbps ? <span className={"badge " + (h.link_speed_mbps < 1000 ? "warn" : "ok")}>{h.link_speed_mbps} Mb/s</span> : "—"}</td>
+                <td>{fmtUptime(h.uptime_seconds)}</td>
                 <td>
                   <div className="btn-row">
+                    <button className="btn small" onClick={() => setHealthOf(p)}><HeartPulse size={13} /> Saúde</button>
                     <button className="btn small" onClick={() => openEdit(p)}><Pencil size={13} /> Editar</button>
                     <button className="btn small danger" onClick={() => setToDelete(p)}><Trash2 size={13} /> Remover</button>
                   </div>
                 </td>
               </tr>
-            ))}
-            {probes.length === 0 && <tr><td colSpan="7" className="muted">Nenhum probe cadastrado. Clique em <b>Adicionar probe</b>.</td></tr>}
+              );
+            })}
+            {probes.length === 0 && <tr><td colSpan="10" className="muted">Nenhum probe cadastrado. Clique em <b>Adicionar probe</b>.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -143,6 +170,8 @@ export default function Probes({ notify, refreshKey }) {
           </div>
         )}
       </Modal>
+
+      <ProbeHealth probe={healthOf} onClose={() => setHealthOf(null)} notify={notify} />
 
       <ConfirmDialog
         open={!!toDelete}

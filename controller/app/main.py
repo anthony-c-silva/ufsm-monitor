@@ -514,6 +514,7 @@ def measurements_traceroute(probe_id: str = "", target: str = "", limit: int = 2
 @app.get("/probes/status")
 def probes_status(minutes: int = 30, db: Session = Depends(get_db)):
     activity = {a["probe_id"]: a for a in analytics.probe_activity(minutes)}
+    health = analytics.probe_health_latest(10)
     out = []
     for p in db.query(models.Probe).all():
         a = activity.get(p.probe_id, {})
@@ -526,8 +527,22 @@ def probes_status(minutes: int = 30, db: Session = Depends(get_db)):
             "ok_recent": ok,
             "success_rate": round(ok / runs, 3) if runs else None,
             "online": bool(a.get("last_seen")),
+            "health": health.get(p.probe_id),
         })
     return out
+
+
+@app.get("/probes/{probe_id}/health")
+def probe_health(probe_id: str, hours: int = 24, bucket_minutes: int = 5):
+    hours = max(1, min(int(hours), 24 * 31))
+    bucket_minutes = max(1, min(int(bucket_minutes), 24 * 60))
+    latest = analytics.probe_health_latest(60 * 24 * 31, probe_id).get(probe_id)
+    return {
+        "probe_id": probe_id,
+        "latest": latest,
+        "bucket_minutes": bucket_minutes,
+        "points": analytics.probe_health_series(probe_id, hours, bucket_minutes),
+    }
 
 
 # --------------------------------------------------------------------------
