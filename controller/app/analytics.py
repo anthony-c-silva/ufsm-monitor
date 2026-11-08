@@ -338,3 +338,35 @@ def probe_health_series(probe_id, hours=24, bucket_minutes=5):
          "agent_rss_mb": rnd(r["agent_rss_mb"]), "throttled": bool(r["throttled"])}
         for r in rows
     ]
+
+
+def iperf_runs(plan_prefix="", hours=24, limit=5000):
+    """Execuções de iperf3 com plano, job, horários e resultado (para experimentos)."""
+    sql = (
+        "SELECT r.run_id, r.observed_at, r.plan_id, r.job_id, r.probe_id, r.target, r.target_probe, "
+        "       r.status, r.error_message, r.started_at, r.finished_at, "
+        "       m.throughput_bps, m.retransmits, m.bytes_transferred, m.duration_seconds, m.direction "
+        "FROM measurement_runs r "
+        "LEFT JOIN iperf_measurements m ON m.run_id = r.run_id AND m.observed_at = r.observed_at "
+        "WHERE r.measurement_type = 'iperf3' "
+        "AND r.observed_at > now() - make_interval(mins => :mins) "
+        "AND COALESCE(r.plan_id, '') LIKE :prefix "
+        "ORDER BY r.observed_at ASC LIMIT :limit"
+    )
+    params = {"mins": max(1, int(round(float(hours) * 60))),
+              "prefix": (plan_prefix or "").replace("%", "").replace("_", "\\_") + "%",
+              "limit": int(limit)}
+    with engine.connect() as conn:
+        if not _table_exists(conn, "measurement_runs"):
+            return []
+        rows = conn.execute(text(sql), params).mappings().all()
+    return [
+        {"run_id": str(r["run_id"]), "observed_at": _iso(r["observed_at"]), "plan_id": r["plan_id"],
+         "job_id": r["job_id"], "probe_id": r["probe_id"], "target": r["target"],
+         "target_probe": r["target_probe"], "status": r["status"], "error_message": r["error_message"],
+         "started_at": _iso(r["started_at"]), "finished_at": _iso(r["finished_at"]),
+         "throughput_bps": r["throughput_bps"], "retransmits": r["retransmits"],
+         "bytes_transferred": r["bytes_transferred"], "duration_seconds": r["duration_seconds"],
+         "direction": r["direction"]}
+        for r in rows
+    ]

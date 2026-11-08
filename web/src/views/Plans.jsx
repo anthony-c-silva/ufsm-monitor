@@ -200,7 +200,7 @@ export default function Plans({ notify, refreshKey }) {
     }
   };
   const runPlan = async (id) => {
-    try { const r = await api.runPlan(id); notify(`Rodou '${id}': ${r.published} tarefa(s) publicada(s)`, "ok"); }
+    try { const r = await api.runPlan(id); notify(`Rodou '${id}': ${r.published} tarefa(s) publicada(s)` + (r.iperf3_queued ? `, ${r.iperf3_queued} teste(s) de vazão na fila de coordenação` : ""), "ok"); }
     catch (e) { notify("Erro ao rodar: " + e.message, "err"); }
   };
   const viewSpec = async (id) => {

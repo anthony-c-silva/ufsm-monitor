@@ -91,3 +91,19 @@ class TaskInstance(Base):
     target_probe = Column(String, default="")
     created_at = Column(DateTime(timezone=True), default=utcnow)
     published_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class Link(Base):
+    """Enlace (trecho) da rede usado na coordenação dos testes de vazão."""
+    __tablename__ = "links"
+    name = Column(String, primary_key=True)
+    description = Column(String, default="")
+    capacity_mbps = Column(Integer, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+
+
+class ProbeUplink(Base):
+    """Cadeia ordenada de enlaces entre a sonda e o núcleo da rede."""
+    __tablename__ = "probe_uplinks"
+    probe_id = Column(String, primary_key=True)
+    links = Column(JSON, default=list)

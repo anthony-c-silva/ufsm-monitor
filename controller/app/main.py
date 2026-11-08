@@ -12,17 +12,21 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer
 from sqlalchemy.orm import Session
 
-from . import analytics, auth, ingestion, models, planning, publisher, scheduler
+from . import analytics, auth, coordination, ingestion, models, planning, publisher, scheduler
 from .config import FRONTEND_ORIGINS, SCHEDULER_ENABLED
 from .db import Base, SessionLocal, engine, get_db
 from .schemas import (
+    ConflictCheckIn,
+    CoordinationModeIn,
     GroupIn,
+    LinkIn,
     LoginIn,
     PasswordChangeIn,
     Plan,
     ProbeIn,
     RefreshIn,
     TargetIn,
+    UplinksIn,
     UserIn,
 )
 
@@ -196,6 +200,96 @@ def scheduler_status():
 
 
 # --------------------------------------------------------------------------
+# Coordenação dos testes de vazão (enlaces, cadeias por sonda e modo)
+# --------------------------------------------------------------------------
+@app.get("/scheduler/coordination")
+def coordination_status(db: Session = Depends(get_db)):
+    return {
+        "mode": coordination.get_mode(db),
+        "modes": coordination.MODES,
+        **scheduler.coordination_snapshot(),
+    }
+
+
+@app.put("/scheduler/coordination")
+def coordination_set_mode(body: CoordinationModeIn, db: Session = Depends(get_db)):
+    return {"mode": coordination.set_mode(db, body.mode)}
+
+
+@app.post("/scheduler/coordination/check")
+def coordination_check(body: ConflictCheckIn, db: Session = Depends(get_db)):
+    mode = body.mode or coordination.get_mode(db)
+    return coordination.check_pairs(mode, [p.model_dump() for p in body.pairs], coordination.chains(db))
+
+
+def _link_dict(link: models.Link, used_by: list[str]) -> dict:
+    return {"name": link.name, "description": link.description,
+            "capacity_mbps": link.capacity_mbps, "used_by": used_by}
+
+
+@app.get("/links")
+def list_links(db: Session = Depends(get_db)):
+    ch = coordination.chains(db)
+    return [
+        _link_dict(l, sorted(pid for pid, links in ch.items() if l.name in links))
+        for l in db.query(models.Link).order_by(models.Link.name).all()
+    ]
+
+
+@app.post("/links")
+def upsert_link(body: LinkIn, db: Session = Depends(get_db)):
+    name = body.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="informe o nome do enlace")
+    link = db.get(models.Link, name)
+    if link is None:
+        link = models.Link(name=name)
+        db.add(link)
+    link.description = body.description
+    link.capacity_mbps = body.capacity_mbps
+    db.commit()
+    return _link_dict(link, [])
+
+
+@app.delete("/links/{name}")
+def delete_link(name: str, db: Session = Depends(get_db)):
+    link = db.get(models.Link, name)
+    if link is None:
+        raise HTTPException(status_code=404, detail="enlace não encontrado")
+    # remove o enlace das cadeias que o usam
+    for u in db.query(models.ProbeUplink).all():
+        if name in (u.links or []):
+            u.links = [x for x in u.links if x != name]
+    db.delete(link)
+    db.commit()
+    return {"deleted": name}
+
+
+@app.get("/probes/uplinks")
+def list_uplinks(db: Session = Depends(get_db)):
+    return coordination.chains(db)
+
+
+@app.put("/probes/{probe_id}/uplinks")
+def set_uplinks(probe_id: str, body: UplinksIn, db: Session = Depends(get_db)):
+    if db.get(models.Probe, probe_id) is None:
+        raise HTTPException(status_code=404, detail="sonda não encontrada")
+    links = [x.strip() for x in body.links if x.strip()]
+    if len(set(links)) != len(links):
+        raise HTTPException(status_code=400, detail="enlace repetido na cadeia")
+    missing = [x for x in links if db.get(models.Link, x) is None]
+    if missing:
+        raise HTTPException(status_code=400, detail=f"enlace não cadastrado: {', '.join(missing)}")
+    row = db.get(models.ProbeUplink, probe_id)
+    if row is None:
+        row = models.ProbeUplink(probe_id=probe_id)
+        db.add(row)
+    row.links = links
+    db.commit()
+    return {"probe_id": probe_id, "links": links}
+
+
+# --------------------------------------------------------------------------
 # Probes
 # --------------------------------------------------------------------------
 @app.post("/probes")
@@ -365,11 +459,19 @@ def run_plan(plan_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail={"errors": errors})
 
     tasks = planning.expand(plan, db)
+    # Testes de vazão passam pela fila de coordenação, como no agendamento automático.
+    durations = {j.id: (j.duration_seconds or 10) for j in plan.jobs}
+    iperf = [t for t in tasks if t.type == "iperf3"]
+    serializer = scheduler.get_serializer()
+    for t in iperf:
+        serializer.submit(t, plan.plan_id, plan.revision, durations.get(t.job_id, 10))
+    direct = [t for t in tasks if t.type != "iperf3"]
+
     now = datetime.now(timezone.utc)
-    task_dicts = [publisher.task_to_dict(t, plan.plan_id, plan.revision, now) for t in tasks]
+    task_dicts = [publisher.task_to_dict(t, plan.plan_id, plan.revision, now) for t in direct]
 
     try:
-        published = publisher.publish(task_dicts)
+        published = publisher.publish(task_dicts) if task_dicts else 0
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=502, detail=f"falha ao publicar no RabbitMQ: {exc}")
 
@@ -388,7 +490,8 @@ def run_plan(plan_id: str, db: Session = Depends(get_db)):
             )
         )
     db.commit()
-    return {"published": published, "expansion": planning.summarize(plan, tasks)}
+    return {"published": published, "iperf3_queued": len(iperf),
+            "expansion": planning.summarize(plan, tasks)}
 
 
 # --------------------------------------------------------------------------
@@ -399,6 +502,9 @@ def delete_probe(probe_id: str, db: Session = Depends(get_db)):
     p = db.get(models.Probe, probe_id)
     if p is None:
         raise HTTPException(status_code=404, detail="probe não encontrado")
+    up = db.get(models.ProbeUplink, probe_id)
+    if up is not None:
+        db.delete(up)
     db.delete(p)
     db.commit()
     return {"deleted": probe_id}
@@ -504,6 +610,11 @@ def measurements_series(
 @app.get("/measurements/matrix")
 def measurements_matrix(type: str = "icmp", hours: int = 24):
     return analytics.matrix(type, hours)
+
+
+@app.get("/measurements/iperf3/runs")
+def measurements_iperf_runs(plan_prefix: str = "", hours: float = 24, limit: int = 5000):
+    return analytics.iperf_runs(plan_prefix, hours, min(int(limit), 20000))
 
 
 @app.get("/measurements/traceroute")

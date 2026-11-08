@@ -62,6 +62,16 @@ export const api = {
   probesStatus: (minutes = 30) => req("/probes/status" + qs({ minutes })),
   probeHealth: (id, q = {}) => req("/probes/" + encodeURIComponent(id) + "/health" + qs(q)),
 
+  // coordenação dos testes de vazão
+  coordination: () => req("/scheduler/coordination"),
+  setCoordinationMode: (mode) => req("/scheduler/coordination", { method: "PUT", body: JSON.stringify({ mode }) }),
+  checkConflicts: (b) => req("/scheduler/coordination/check", { method: "POST", body: JSON.stringify(b) }),
+  links: () => req("/links"),
+  saveLink: (b) => req("/links", { method: "POST", body: JSON.stringify(b) }),
+  delLink: (n) => req("/links/" + encodeURIComponent(n), { method: "DELETE" }),
+  uplinks: () => req("/probes/uplinks"),
+  setUplinks: (id, links) => req("/probes/" + encodeURIComponent(id) + "/uplinks", { method: "PUT", body: JSON.stringify({ links }) }),
+
   // inventário
   probes: () => req("/probes"),
   addProbe: (b) => req("/probes", { method: "POST", body: JSON.stringify(b) }),

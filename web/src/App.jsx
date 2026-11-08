@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
   LayoutDashboard, Server, Globe, Boxes, SlidersHorizontal, Activity, Grid3x3, Users as UsersIcon,
-  LogOut, RefreshCw, Menu, KeyRound, ChevronDown, Network,
+  LogOut, RefreshCw, Menu, KeyRound, ChevronDown, Network, Waypoints,
 } from "lucide-react";
 import { api } from "./api.js";
 import { isAuthenticated, clearSession, logout as doLogout, getUsername } from "./auth.js";
@@ -9,6 +9,7 @@ import Overview from "./views/Overview.jsx";
 import Probes from "./views/Probes.jsx";
 import Destinos from "./views/Destinos.jsx";
 import Groups from "./views/Groups.jsx";
+import Enlaces from "./views/Enlaces.jsx";
 import Plans from "./views/Plans.jsx";
 import Series from "./views/Series.jsx";
 import Matrix from "./views/Matrix.jsx";
@@ -22,6 +23,7 @@ const NAV = [
   { id: "destinos", label: "Destinos", Icon: Globe, title: "Destinos (allowlist)" },
   { id: "groups", label: "Grupos", Icon: Boxes, title: "Grupos de probes" },
   { id: "plans", label: "Planos", Icon: SlidersHorizontal, title: "Planos de medição" },
+  { id: "enlaces", label: "Enlaces", Icon: Waypoints, title: "Enlaces e coordenação dos testes de vazão" },
   { id: "series", label: "Séries", Icon: Activity, title: "Séries temporais" },
   { id: "matrix", label: "Matriz & status", Icon: Grid3x3, title: "Matriz probe×destino e status" },
   { id: "users", label: "Usuários", Icon: UsersIcon, title: "Usuários" },
@@ -166,6 +168,7 @@ export default function App() {
           {view === "destinos" && <Destinos {...shared} />}
           {view === "groups" && <Groups {...shared} />}
           {view === "plans" && <Plans {...shared} />}
+          {view === "enlaces" && <Enlaces {...shared} />}
           {view === "series" && <Series {...shared} />}
           {view === "matrix" && <Matrix {...shared} />}
           {view === "users" && <Users {...shared} currentUser={currentUser} />}

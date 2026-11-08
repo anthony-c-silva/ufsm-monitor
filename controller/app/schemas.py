@@ -21,6 +21,31 @@ class TargetIn(BaseModel):
     address: str
 
 
+class LinkIn(BaseModel):
+    name: str
+    description: str = ""
+    capacity_mbps: Optional[int] = None
+
+
+class UplinksIn(BaseModel):
+    links: list[str] = Field(default_factory=list)  # da sonda em direção ao núcleo
+
+
+class CoordinationModeIn(BaseModel):
+    mode: Literal["sonda", "trecho", "global"]
+
+
+class PairIn(BaseModel):
+    source_probe: str
+    target_probe: str = ""
+    target: str = ""
+
+
+class ConflictCheckIn(BaseModel):
+    mode: Optional[Literal["sonda", "trecho", "global"]] = None
+    pairs: list[PairIn]
+
+
 class GroupIn(BaseModel):
     name: str
     members: list[str] = Field(default_factory=list)

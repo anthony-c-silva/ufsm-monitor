@@ -2,16 +2,18 @@
 
 Executa os planos HABILITADOS por `period_seconds` (com jitter, para evitar
 sincronização rígida) e **serializa os testes de iperf3** (medições intrusivas):
-um probe nunca participa de dois testes de vazão ao mesmo tempo, seja como origem
-ou como destino (spec 11). Roda em threads dentro do processo do controlador.
+os testes de vazão só rodam ao mesmo tempo quando não disputam sondas nem, no
+modo ``trecho``, enlaces cadastrados (ver coordination.py). Roda em threads
+dentro do processo do controlador.
 """
 import logging
 import random
 import threading
 import time
+from collections import deque
 from datetime import datetime, timezone
 
-from . import models, planning, publisher
+from . import coordination, models, planning, publisher
 from .config import IPERF3_SLACK_SECONDS, JOB_JITTER_PCT, SCHEDULER_TICK_SECONDS
 from .db import SessionLocal
 from .schemas import Plan
@@ -49,54 +51,120 @@ def _dispatch(specs, plan_id, plan_revision) -> int:
 
 
 class Iperf3Serializer:
-    """Fila de testes de vazão com reserva de origem+destino. Um worker despacha
-    apenas tarefas cujos dois probes estejam livres, reservando-os e liberando-os
-    após (duração + folga). Serializa naturalmente sem colisões."""
+    """Fila dos testes de vazão. Cada teste ocupa um conjunto de recursos
+    (sondas e, no modo ``trecho``, os enlaces do caminho; ver coordination.py).
+    Um worker despacha apenas os testes cujos recursos estejam livres, reserva
+    esses recursos e os libera após (duração + folga)."""
 
     def __init__(self, slack_seconds: int):
         self._lock = threading.Lock()
-        self._busy: set[str] = set()
-        self._queue: list = []  # (spec, plan_id, revision, duration)
+        self._busy: dict[str, int] = {}       # recurso -> id da reserva
+        self._running: dict[int, dict] = {}   # id da reserva -> descrição
+        self._queue: list[dict] = []
+        self._log: deque = deque(maxlen=200)  # últimas decisões (despachos)
+        self._seq = 0
         self._slack = slack_seconds
         threading.Thread(target=self._worker, name="iperf3-serializer", daemon=True).start()
 
     def submit(self, spec, plan_id, revision, duration):
         with self._lock:
-            self._queue.append((spec, plan_id, revision, duration))
+            self._queue.append({
+                "spec": spec, "plan_id": plan_id, "revision": revision,
+                "duration": duration, "enqueued": time.time(), "blocked_by": [],
+            })
 
     @staticmethod
-    def _keys(spec):
-        return spec.source_probe, (spec.target_probe or spec.target)
+    def _context():
+        db = SessionLocal()
+        try:
+            return coordination.get_mode(db), coordination.chains(db)
+        finally:
+            db.close()
 
-    def _release(self, src, tgt):
+    def _release(self, rid):
         with self._lock:
-            self._busy.discard(src)
-            self._busy.discard(tgt)
+            info = self._running.pop(rid, None)
+            if info:
+                for r in info["resources"]:
+                    if self._busy.get(r) == rid:
+                        del self._busy[r]
 
     def _worker(self):
         while True:
             time.sleep(1)
+            with self._lock:
+                pending = bool(self._queue)
+            if not pending:
+                continue
+            try:
+                mode, chain_of = self._context()
+            except Exception as exc:  # noqa: BLE001
+                log.warning("iperf3: falha ao ler a coordenação: %s", exc)
+                continue
             ready = []
+            now = time.time()
             with self._lock:
                 remaining = []
                 for item in self._queue:
-                    spec, _plan, _rev, duration = item
-                    src, tgt = self._keys(spec)
-                    if src in self._busy or tgt in self._busy:
+                    s = item["spec"]
+                    res = coordination.resources(mode, s.source_probe, s.target_probe, s.target, chain_of)
+                    blocked = sorted(r for r in res if r in self._busy)
+                    if blocked:
+                        item["blocked_by"] = blocked
                         remaining.append(item)
                         continue
-                    self._busy.add(src)
-                    self._busy.add(tgt)
-                    ready.append(item)
-                    threading.Timer(duration + self._slack, self._release, args=(src, tgt)).start()
+                    self._seq += 1
+                    rid = self._seq
+                    for r in res:
+                        self._busy[r] = rid
+                    entry = {
+                        "id": rid,
+                        "dispatched_at": datetime.now(timezone.utc).isoformat(),
+                        "plan_id": item["plan_id"],
+                        "source_probe": s.source_probe,
+                        "target_probe": s.target_probe,
+                        "target": s.target,
+                        "mode": mode,
+                        "resources": sorted(res),
+                        "waited_s": round(now - item["enqueued"], 1),
+                        "blocked_by": item["blocked_by"],
+                        "duration": item["duration"],
+                    }
+                    self._running[rid] = entry
+                    self._log.appendleft(entry)
+                    ready.append((rid, item))
+                    threading.Timer(item["duration"] + self._slack, self._release, args=(rid,)).start()
                 self._queue = remaining
-            for spec, plan_id, revision, _duration in ready:
+            for rid, item in ready:
+                s = item["spec"]
                 try:
-                    _dispatch([spec], plan_id, revision)
-                    log.info("iperf3 despachado: %s -> %s", spec.source_probe, spec.target_probe or spec.target)
+                    _dispatch([s], item["plan_id"], item["revision"])
+                    log.info("iperf3 despachado (%s): %s -> %s", mode, s.source_probe, s.target_probe or s.target)
                 except Exception as exc:  # noqa: BLE001
                     log.warning("iperf3: falha ao publicar: %s", exc)
-                    self._release(*self._keys(spec))
+                    self._release(rid)
+
+    def snapshot(self) -> dict:
+        now = time.time()
+        with self._lock:
+            return {
+                "busy": [
+                    {"resource": r, "holder": f"{self._running[rid]['source_probe']} -> "
+                                              f"{self._running[rid]['target_probe'] or self._running[rid]['target']}"}
+                    for r, rid in sorted(self._busy.items()) if rid in self._running
+                ],
+                "running": list(self._running.values()),
+                "queue": [
+                    {"source_probe": i["spec"].source_probe,
+                     "target_probe": i["spec"].target_probe,
+                     "target": i["spec"].target,
+                     "plan_id": i["plan_id"],
+                     "waiting_s": round(now - i["enqueued"], 1),
+                     "blocked_by": i["blocked_by"]}
+                    for i in self._queue
+                ],
+                "recent": list(self._log)[:50],
+            }
 
 
 class Scheduler:
@@ -168,15 +236,29 @@ class Scheduler:
 
 
 _instance: Scheduler | None = None
+_serializer: Iperf3Serializer | None = None
+_serializer_lock = threading.Lock()
+
+
+def get_serializer() -> Iperf3Serializer:
+    """Serializador único do processo (criado sob demanda)."""
+    global _serializer
+    with _serializer_lock:
+        if _serializer is None:
+            _serializer = Iperf3Serializer(IPERF3_SLACK_SECONDS)
+        return _serializer
 
 
 def start():
     """Inicia o scheduler (chamado no startup do controlador)."""
     global _instance
-    serializer = Iperf3Serializer(IPERF3_SLACK_SECONDS)
-    _instance = Scheduler(SCHEDULER_TICK_SECONDS, JOB_JITTER_PCT, serializer)
+    _instance = Scheduler(SCHEDULER_TICK_SECONDS, JOB_JITTER_PCT, get_serializer())
     _instance.start()
 
 
 def status() -> dict:
     return _instance.last_runs if _instance else {}
+
+
+def coordination_snapshot() -> dict:
+    return get_serializer().snapshot()
