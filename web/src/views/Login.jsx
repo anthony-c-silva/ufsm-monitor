@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Activity, Lock, User, Eye, EyeOff } from "lucide-react";
+import { Lock, User, Eye, EyeOff } from "lucide-react";
+import Logo from "../components/Logo.jsx";
 import { login } from "../auth.js";
 
 export default function Login({ onLoggedIn }) {
@@ -26,12 +27,11 @@ export default function Login({ onLoggedIn }) {
   return (
     <div className="auth-wrap">
       <div className="auth-card">
-        <div className="logo">
-          <Activity size={22} color="#3d8bfd" />
-          <strong>UFSM Monitor</strong>
+        <div className="auth-brand">
+          <Logo size={44} subtitle="Sistema Orquestrado de Nós Distribuídos para Avaliação de Redes" />
         </div>
         <h1>Entrar</h1>
-        <p className="sub">Monitoramento Ativo da Rede</p>
+        <p className="sub">Monitoramento ativo da rede do campus</p>
         <form onSubmit={submit}>
           {err && <div className="auth-err">{err}</div>}
           <label className="fld">

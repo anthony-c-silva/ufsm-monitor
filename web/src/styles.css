@@ -318,3 +318,11 @@ label.fld .hint { text-transform: none; letter-spacing: 0; }
 .switch input:checked + .track { background: var(--primary-soft); border-color: var(--primary); }
 .switch input:checked + .track .thumb { transform: translateX(17px); background: var(--primary); }
 .switch input:disabled + .track { opacity: .5; cursor: not-allowed; }
+/* marca SONDAR */
+.sondar-logo { display: flex; align-items: center; gap: 11px; }
+.sondar-text { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
+.sondar-name { font-weight: 800; letter-spacing: .14em; color: #fff;
+  background: linear-gradient(90deg, #ffffff 0%, #cfe2ff 55%, #9be7c8 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.sondar-sub { font-size: 10.5px; color: var(--faint); margin-top: 3px; letter-spacing: .02em; }
+.auth-brand { margin-bottom: 14px; }
+.auth-brand .sondar-sub { font-size: 11px; max-width: 250px; }

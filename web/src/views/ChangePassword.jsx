@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Lock, ShieldCheck, KeyRound } from "lucide-react";
+import { Lock, KeyRound } from "lucide-react";
+import Logo from "../components/Logo.jsx";
 import { api } from "../api.js";
 import { setSession } from "../auth.js";
 
@@ -38,9 +39,8 @@ export default function ChangePassword({ forced, onDone, onCancel, notify }) {
   return (
     <div className="auth-wrap">
       <div className="auth-card">
-        <div className="logo">
-          <ShieldCheck size={22} color="#3d8bfd" />
-          <strong>UFSM Monitor</strong>
+        <div className="auth-brand">
+          <Logo size={36} />
         </div>
         <h1>{forced ? "Defina uma nova senha" : "Trocar senha"}</h1>
         <p className="sub">

@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
   LayoutDashboard, Server, Globe, Boxes, SlidersHorizontal, Activity, Grid3x3, Users as UsersIcon,
-  LogOut, RefreshCw, Menu, KeyRound, ChevronDown, Network, Waypoints,
+  LogOut, RefreshCw, Menu, KeyRound, ChevronDown, Waypoints,
 } from "lucide-react";
 import { api } from "./api.js";
+import Logo from "./components/Logo.jsx";
 import { isAuthenticated, clearSession, logout as doLogout, getUsername } from "./auth.js";
 import Overview from "./views/Overview.jsx";
 import Probes from "./views/Probes.jsx";
@@ -113,8 +114,7 @@ export default function App() {
       <div className={"overlay" + (sidebarOpen ? " show" : "")} onClick={() => setSidebarOpen(false)} />
       <aside className={"sidebar" + (sidebarOpen ? " open" : "")}>
         <div className="brand">
-          <div className="logo"><Network size={20} color="#3d8bfd" /><span className="kicker">UFSM Monitor</span></div>
-          <h1>Monitoramento Ativo da Rede</h1>
+          <Logo size={34} subtitle="Monitoramento ativo de redes" />
         </div>
         <nav className="nav">
           {NAV.map(({ id, label, Icon }) => (
@@ -123,7 +123,7 @@ export default function App() {
             </button>
           ))}
         </nav>
-        <div className="foot">Plataforma distribuída · TCC</div>
+        <div className="foot">SONDAR · UFSM</div>
       </aside>
 
       <div className="main">
